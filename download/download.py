@@ -56,6 +56,7 @@ query = """
                 OPTIONAL { ?b_entry lexinfo:partOfSpeech ?b_pos . }
             }
         }
+        ORDER BY ?a ?b
     }
     GROUP BY ?a ?b
     OFFSET %(offset)s
@@ -70,10 +71,11 @@ def make_url(**fmt_args):
         'format': 'text/tab-separated-values',
         'timeout': 0,
     })
+    #print query % fmt_args
     return url
 
 part = 0
-with open('dictionaries/raw/{}-{}.tsv'.format(from_lang, to_lang)) as f:
+with open('dictionaries/raw/{}-{}.tsv'.format(from_lang, to_lang), 'w') as f:
     while True:
         # download and save
         offset = part * limit
