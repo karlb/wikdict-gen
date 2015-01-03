@@ -18,7 +18,7 @@ def format_word(word):
 
 
 # generate tsv
-Translation = namedtuple('Translation', ['written', 'gender', 'pos', 'pronun'])
+Translation = namedtuple('Translation', ['written', 'pos', 'gender', 'pronun'])
 in_filename = 'dictionaries/raw/{}-{}.tsv'.format(from_lang, to_lang)
 out_filename = 'dictionaries/tsv/{}-{}.tsv'.format(from_lang, to_lang)
 with open(in_filename) as in_file, open(out_filename, 'w') as out_file:
