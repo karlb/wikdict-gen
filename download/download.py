@@ -16,28 +16,38 @@ query = """
             group_concat(DISTINCT ?a_pos, ' | ') AS ?a_pos
             group_concat(DISTINCT ?a_gender, ' | ') AS ?a_gender
             group_concat(DISTINCT ?a_pronun, ' | ') AS ?a_pronun
+            group_concat(DISTINCT ?a_gloss, ' | ') AS ?a_gloss
+            group_concat(DISTINCT ?a_vocable, ' | ') AS ?a_vocable
             ?b
             group_concat(DISTINCT ?b_pos, ' | ') AS ?b_pos
             group_concat(DISTINCT ?b_gender, ' | ') AS ?b_gender
             group_concat(DISTINCT ?b_pronun, ' | ') AS ?b_pronun
+            group_concat(DISTINCT ?b_gloss, ' | ') AS ?b_gloss
+            group_concat(DISTINCT ?b_vocable, ' | ') AS ?b_vocable
     WHERE {
-        SELECT ?a ?b ?a_pos ?a_gender ?a_pronun ?b_pos ?b_gender ?b_pronun
+        SELECT ?a ?b
+            ?a_pos ?a_gender ?a_pronun ?a_gloss ?a_vocable
+            ?b_pos ?b_gender ?b_pronun ?b_gloss ?b_vocable
         WHERE {
             {
                 ?a_form lemon:writtenRep ?a .
                 ?a_entry lemon:canonicalForm ?a_form ;
                     dcterms:language lexvo:%(from_lang)s .
-                ?trans dbnary:isTranslationOf ?a_entry ;
+                ?a_vocable dbnary:refersTo ?a_entry .
+                ?a_trans dbnary:isTranslationOf ?a_entry ;
                     dbnary:targetLanguage lexvo:%(to_lang)s ;
                     dbnary:writtenForm ?b .
+                OPTIONAL { ?a_trans dbnary:gloss ?a_gloss . }
             }
             UNION {
                 ?b_form lemon:writtenRep ?b .
                 ?b_entry lemon:canonicalForm ?b_form ;
                     dcterms:language lexvo:%(to_lang)s .
-                ?trans dbnary:isTranslationOf ?b_entry ;
+                ?b_vocable dbnary:refersTo ?b_entry .
+                ?b_trans dbnary:isTranslationOf ?b_entry ;
                     dbnary:targetLanguage lexvo:%(from_lang)s ;
                     dbnary:writtenForm ?a .
+                OPTIONAL { ?b_trans dbnary:gloss ?b_gloss . }
             }
             OPTIONAL {
                 ?a_form lemon:writtenRep ?a .
@@ -82,7 +92,11 @@ with open('dictionaries/raw/{}-{}.tsv'.format(from_lang, to_lang), 'w') as f:
         url = make_url(from_lang=language_codes3[from_lang],
                     to_lang=language_codes3[to_lang],
                     offset=offset, limit=limit)
-        response = urllib2.urlopen(url)
+        try:
+            response = urllib2.urlopen(url)
+        except urllib2.HTTPError as e:
+            print e.read()
+            raise
         tsv = response.readlines()
 
         # stop if finished
@@ -99,7 +113,7 @@ with open('dictionaries/raw/{}-{}.tsv'.format(from_lang, to_lang), 'w') as f:
 
         if part >= 20:
             print ('Do we really need to fetch more than {} parts? '
-                'Stopping to avoid load.'.format(part))
+                'Stopping to avoid load.'.format(part + 1))
             sys.exit(-2)
 
         part += 1
