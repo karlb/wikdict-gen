@@ -2,6 +2,7 @@
 import sys
 import urllib2
 from urllib import urlencode
+import csv
 
 from languages import language_codes3
 
@@ -75,7 +76,9 @@ query = """
 
 
 def make_url(**fmt_args):
-    url = 'http://kaiko.getalp.org/sparql?' + urlencode({
+    #server = 'http://kaiko.getalp.org'
+    server = 'http://localhost:8890'
+    url = server + '/sparql?' + urlencode({
         'default-graph-uri': '',
         'query': query % fmt_args,
         'format': 'text/tab-separated-values',
@@ -104,11 +107,14 @@ with open('dictionaries/raw/{}-{}.tsv'.format(from_lang, to_lang), 'w') as f:
             break
 
         # write results to file
-        for line in tsv[1:]:
+        for cols in csv.reader(tsv[1:], dialect="excel-tab"):
+            line = '\t'.join(cols)
             f.write(
                 line
                 .replace('http://www.lexinfo.net/ontology/2.0/lexinfo#', '')
                 .replace('"', '')
+                .replace('\n', '')
+                + '\n'
             )
 
         if part >= 20:

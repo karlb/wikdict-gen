@@ -4,3 +4,6 @@ syntax: glob
 .DS_Store
 .ropeproject
 dictionaries/*/*
+dictionaries/I*
+virt
+virt.orig

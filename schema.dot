@@ -1,0 +1,13 @@
+digraph graphname {
+	"dbnary:Vocable" -> "lemon:LexicalEntry" [label="dbnary:refersTo"]
+	"lemon:LexicalEntry" -> "lemon:LexicalSense" [label="lemon:sense"]
+	"dbnary:Translation" -> "lemon:LexicalEntry" [label="dbnary:isTranslationOf"]
+	"dbnary:Translation" -> "lemon:LexicalSense" [label="dbnary:isTranslationOf\nDE, FR"]
+	"lemon:LexicalEntry" -> "canonical" [label="lemon:canonicalForm"]
+
+	"lemon:LexicalEntry" [shape=plain, label=<<FONT POINT-SIZE="18">lemon:LexicalEntry</FONT><BR/>lemon:language<BR/>dcterms:language<BR/>lexinfo:partOfSpeech<BR/>dbnary:partOfSpeech>];
+	"canonical" [shape=plain, label=<<FONT POINT-SIZE="18">canonical</FONT><BR/>lexinfo:pronunciation<BR/>lemon:writtenRep>];
+	"lemon:LexicalSense" [shape=plain, label=<<FONT POINT-SIZE="18">lemon:LexicalSense</FONT><BR/>lemon:definition<BR/>dbnary:senseNumber>];
+	"dbnary:Translation" [shape=plain, label=<<FONT POINT-SIZE="18">dbnary:Translation</FONT><BR/>dbnary:gloss<BR/>dbnary:writtenForm<BR/>dbnary:targetLanguage>];
+
+}
