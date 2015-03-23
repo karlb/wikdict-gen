@@ -27,7 +27,7 @@ query = """
 
             {
                 SELECT ?sense,
-                       group_concat(?written_trans, ' | ') AS ?trans_list
+                       group_concat(DISTINCT ?written_trans, ' | ') AS ?trans_list
                 WHERE {
                 ?trans dbnary:isTranslationOf ?sense ;
                     dbnary:targetLanguage lexvo:%(to_lang)s ;

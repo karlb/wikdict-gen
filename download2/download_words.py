@@ -32,9 +32,13 @@ query = """
                     dbnary:senseNumber ?sense_number .
                 ?sense_def lemon:value ?sense_value .
             }
+            FILTER (
+                #bound(?pos) OR  # commented out to reduce amount of data
+                bound(?gender) OR bound(?pronun) OR bound(?sense_def)
+            )
         }
-        GROUP BY ?vocable ?written ?pos ?gender ?sense_value ?sense_number
-        ORDER BY ?vocable ?sense_number
+        GROUP BY ?entry ?written ?pos ?gender ?sense_value ?sense_number
+        ORDER BY ?entry ?sense_number
     }
     OFFSET %(offset)s
     LIMIT %(limit)s
