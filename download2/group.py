@@ -33,8 +33,13 @@ def make_sense(line):
     while len(line) < len(Sense._fields):
         line.append(None)
     t = Sense(*line)
+    trans_list = t.trans_list.split(' | ')
+    if '' in trans_list:
+        raise Exception('Empty translation %r %r' % t.written, trans_list)
+    if t.written == '':
+        raise Exception('Bad headword %r' % t.written)
     return t._replace(
-        trans_list=t.trans_list.split(' | '),
+        trans_list=trans_list,
         pronun_list=t.pronun_list.split(' | ') if t.pronun_list else [],
     )
 
@@ -104,9 +109,9 @@ dir2 = make_vocable_list(lang2, lang1)
 add_fallback_entries(dir1, dir2)
 add_fallback_entries(dir2, dir1)
 
-print '--'
-for x in dir1['hund']:
-    print x
+#print '--'
+#for x in dir1['hund']:
+#    print x
 #print '--'
 #for x in dir2['boot']:
 #    print x
