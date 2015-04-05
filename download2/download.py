@@ -20,6 +20,9 @@ query_type = {
     'pl': 'sense',
     'sv': 'gloss',
     'es': 'sense',
+    'pt': 'gloss',
+    'fi': 'sense',
+    'el': 'sense',
 }
 query_dict = {
     'sense': """
@@ -94,6 +97,8 @@ query_dict = {
             OPTIONAL { ?lexentry lexinfo:partOfSpeech ?pos . }
             OPTIONAL { ?lexform lexinfo:gender ?gender . }
             #FILTER (?written_rep = 'second'@en)  # for tests
+            FILTER (str(?written_rep) != '')  # probably not necessary, but
+                    # seems to avoid a bug in my local virtuoso for @es data
         }
         ORDER BY ?lexentry ?sense_num ?gloss
     """

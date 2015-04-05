@@ -35,7 +35,7 @@ def make_sense(line):
     t = Sense(*line)
     trans_list = t.trans_list.split(' | ')
     if '' in trans_list:
-        raise Exception('Empty translation %r %r' % t.written, trans_list)
+        raise Exception('Empty translation %r %r' % (t.written, trans_list))
     if t.written == '':
         raise Exception('Bad headword %r' % t.written)
     return t._replace(
