@@ -23,6 +23,8 @@ query_type = {
     'pt': 'gloss',
     'fi': 'sense',
     'el': 'sense',
+    'ru': 'sense',
+    'tr': 'sense',
 }
 query_dict = {
     'sense': """
