@@ -139,7 +139,7 @@ def write_tei_dict(from_lang, to_lang, lines):
                         pron.text = p
                 is_suffix = (
                     x['pos'] == 'suffix' or
-                    (x['pos'] == '' and x['written'].startswith('-'))
+                    (x['pos'] in ('', None) and x['written'].startswith('-'))
                 )
                 if is_suffix:
                     assert x['written'].startswith('-')
