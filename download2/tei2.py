@@ -155,20 +155,21 @@ def write_tei_dict(from_lang, to_lang, lines):
                     pos = SubElement(gram_grp, 'pos')
                     pos.text = pos_text
 
-                # translation
-                cit = SubElement(entry, 'cit',
-                                {'type': 'trans', 'xml:lang': to_lang})
-                for trans in x['trans_list']:
-                    quote = SubElement(cit, 'quote')
-                    if is_suffix:
-                        trans = trans[1:]
-                    quote.text = trans
-
                 # sense
-                for i, s in enumerate(x.get('sense_list', []) or []):
+                for i, s in enumerate(x.get('sense_list') or [None]):
                     sense = SubElement(entry, 'sense', {'n': str(i + 1)})
-                    sense_def = SubElement(sense, 'usg', {'type': 'hint'})
-                    sense_def.text = s
+                    if s is not None:
+                        sense_def = SubElement(sense, 'usg', {'type': 'hint'})
+                        sense_def.text = s
+
+                    # translation
+                    cit = SubElement(sense, 'cit',
+                                    {'type': 'trans', 'xml:lang': to_lang})
+                    for trans in x['trans_list']:
+                        quote = SubElement(cit, 'quote')
+                        if is_suffix:
+                            trans = trans[1:]
+                        quote.text = trans
 
         # format xml output
         indent(root)
