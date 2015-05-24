@@ -45,7 +45,7 @@ pos_mapping = {
 
 def write_tei_dict(from_lang, to_lang, lines):
     print from_lang, to_lang
-    lines = [l for l in lines if l[1] == from_lang + '-' + to_lang]
+    lines = sorted(l for l in lines if l[1] == from_lang + '-' + to_lang)
     out_filename = 'dictionaries/tei2/{}-{}.tei'.format(
                         language_codes3[from_lang],
                         language_codes3[to_lang])
