@@ -157,7 +157,7 @@ def write_tei_dict(from_lang, to_lang, lines):
 
                 # translation
                 cit = SubElement(entry, 'cit',
-                                {'type': 'translation', 'xml:lang': to_lang})
+                                {'type': 'trans', 'xml:lang': to_lang})
                 for trans in x['trans_list']:
                     quote = SubElement(cit, 'quote')
                     if is_suffix:
@@ -165,9 +165,9 @@ def write_tei_dict(from_lang, to_lang, lines):
                     quote.text = trans
 
                 # sense
-                for s in (x.get('sense_list', []) or []):
-                    sense = SubElement(entry, 'sense')
-                    sense_def = SubElement(sense, 'usg')
+                for i, s in enumerate(x.get('sense_list', []) or []):
+                    sense = SubElement(entry, 'sense', {'n': str(i + 1)})
+                    sense_def = SubElement(sense, 'usg', {'type': 'hint'})
                     sense_def.text = s
 
         # format xml output
@@ -188,7 +188,7 @@ if len(sys.argv) == 2 and sys.argv[1] == 'all':
         filename = path.split('/')[-1]
         from_lang, to_lang = filename.replace('.tsv', '').split('-')
         write_dict_pair(from_lang, to_lang)
-elif len(sys.argv == 3):
+elif len(sys.argv) == 3:
     from_lang, to_lang = sys.argv[1:]
     write_dict_pair(from_lang, to_lang)
 else:
