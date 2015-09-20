@@ -46,12 +46,46 @@ def make_prod_single(lang, **kwargs):
         "ATTACH DATABASE 'dictionaries/sqlite/prod/%s.sqlite3' AS prod"
         % (lang))
 
+    if lang == 'de':
+        conn.executescript("""
+            DROP VIEW IF EXISTS lexentry_display;
+            CREATE VIEW lexentry_display AS
+            WITH noun AS (
+                SELECT lexentry, other_written, number
+                FROM form
+                WHERE pos = 'noun'
+                    AND "case" = 'Nominative'
+                    AND coalesce(inflection, '') != 'StrongInflection'
+            )
+            SELECT lexentry, singular AS display, 'Pl.: ' || plural AS display_addition
+            FROM (
+                SELECT lexentry, other_written AS singular
+                FROM noun
+                WHERE number = 'Singular'
+                GROUP BY 1
+                HAVING count(DISTINCT other_written) = 1
+            ) JOIN (
+                SELECT lexentry, other_written AS plural
+                FROM noun
+                WHERE number = 'Plural'
+                GROUP BY 1
+                HAVING count(DISTINCT other_written) = 1
+            ) USING (lexentry);
+        """)
+    else:
+        conn.executescript("""
+            DROP VIEW IF EXISTS lexentry_display;
+            CREATE VIEW lexentry_display AS
+            SELECT '' AS lexentry, '' AS display, '' AS display_addition
+        """)
+
     print 'Prepare entry'
     conn.executescript("""
         DROP TABLE IF EXISTS prod.entry;
         CREATE TABLE prod.entry AS
-        SELECT *
-        FROM entry;
+        SELECT entry.*, display, display_addition
+        FROM entry
+             LEFT JOIN lexentry_display USING (lexentry);
 
         CREATE INDEX prod.entry_written_rep_idx ON entry(written_rep);
     """)
@@ -97,7 +131,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
 
         DROP TABLE IF EXISTS prod.translation;
         CREATE TABLE prod.translation AS
-        SELECT lexentry, display, display_addition, part_of_speech, sense_list,
+        SELECT lexentry, written_rep, part_of_speech, sense_list,
                min_sense_num, trans_list
         FROM grouped_translation_table
             JOIN (
@@ -114,7 +148,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
             form, lexentry, tokenize=unicode61, notindexed=lexentry
         );
         INSERT INTO prod.search_trans
-        SELECT display, lexentry
+        SELECT written_rep, lexentry
         FROM prod.translation
         UNION
         SELECT other_written, lexentry
