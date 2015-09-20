@@ -1,0 +1,8 @@
+digraph graphname {
+	vocable -> lexicalEntry
+	lexicalEntry -> sense
+	lexicalEntry -> translation [style=dashed]
+	lexicalEntry -> form
+	form -> pronun
+	sense -> translation [style=dashed]
+}
