@@ -17,9 +17,8 @@ def apply_views(conn):
 
 
 def search_query(from_lang, to_lang, search_term, **kwargs):
-    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % from_lang)
-    conn.execute(
-        "ATTACH DATABASE 'dictionaries/sqlite/prod/%s-%s.sqlite3' AS prod"
+    conn = sqlite3.connect(
+        'dictionaries/sqlite/prod/%s-%s.sqlite3'
         % (from_lang, to_lang))
     for r in conn.execute("""
                 SELECT * FROM (
@@ -27,15 +26,15 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
                            trans_list
                     FROM (
                             SELECT DISTINCT lexentry
-                            FROM prod.search_trans
+                            FROM search_trans
                             WHERE form MATCH ?
                         )
-                        JOIN prod.translation USING (lexentry)
-                    ORDER BY prod.translation.rowid
+                        JOIN translation USING (lexentry)
+                    ORDER BY translation.rowid
                 )
                 UNION ALL
                 SELECT NULL, written_rep, NULL, NULL, trans_list
-                FROM prod.search_reverse_trans
+                FROM search_reverse_trans
                 WHERE written_rep MATCH ?
             """, [search_term, search_term]):
         print '%-40s %-20s %-20s %-80s %s' % r
