@@ -40,6 +40,28 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
         print '%-40s %-20s %-20s %-80s %s' % r
 
 
+def make_prod_single(lang, **kwargs):
+    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % lang)
+    conn.execute(
+        "ATTACH DATABASE 'dictionaries/sqlite/prod/%s.sqlite3' AS prod"
+        % (lang))
+
+    print 'Prepare entry'
+    conn.executescript("""
+        DROP TABLE IF EXISTS prod.entry;
+        CREATE TABLE prod.entry AS
+        SELECT *
+        FROM entry;
+
+        CREATE INDEX prod.entry_written_rep_idx ON entry(written_rep);
+    """)
+
+    conn.close()
+    print 'Vacuum'
+    sqlite3.connect('dictionaries/sqlite/prod/{}.sqlite3'.format(lang)
+                    ).execute('VACUUM')
+
+
 def interactive(from_lang, to_lang, **kwargs):
     with open('/tmp/attach_dbs.sql', 'w') as f:
         f.write(attach_dbs(from_lang, to_lang))
@@ -144,6 +166,7 @@ def make_complete_lang(langs, **kwargs):
         print 'Lang:', lang
         make_form(lang)
         make_entry(lang)
+        make_prod_single(lang)
 
 
 def make_complete_pair(langs, **kwargs):
@@ -198,6 +221,10 @@ if __name__ == '__main__':
     prod_pair.add_argument('from_lang')
     prod_pair.add_argument('to_lang')
     prod_pair.set_defaults(func=make_prod_pair)
+
+    prod_single = subparsers.add_parser('prod')
+    prod_single.add_argument('lang')
+    prod_single.set_defaults(func=make_prod_single)
 
     complete_lang = subparsers.add_parser('complete_lang')
     complete_lang.add_argument('langs', nargs='+', metavar='lang')
