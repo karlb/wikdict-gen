@@ -21,7 +21,6 @@ FROM (
 ) USING (lexentry);
 
 
-
 -- Build a list of translations by using the translations from the other language and reversing the translation order
 DROP VIEW IF EXISTS main.reverse_trans;
 CREATE TEMP VIEW reverse_trans AS
@@ -91,38 +90,22 @@ FROM reverse_trans_no_duplicates;
 
 DROP VIEW IF EXISTS grouped_translation;
 CREATE TEMP VIEW grouped_translation AS
-SELECT lexentry, written_rep,
+SELECT lexentry, display, display_addition,
     group_concat(sense, ' | ') AS sense_list, min(sense_num) AS min_sense_num, trans_list
 FROM (
-    SELECT lexentry, written_rep, sense, sense_num, group_concat(trans, ' | ') AS trans_list,
+    SELECT lexentry, display, display_addition, sense, sense_num, group_concat(trans, ' | ') AS trans_list,
         min(trans_entity) AS min_trans_entity
     FROM (
-        SELECT *
+        SELECT lexentry, coalesce(main, written_rep) AS display, addition AS display_addition,
+               sense, sense_num, trans, trans_entity
         FROM lang_pair.translation
              JOIN entry USING (lexentry)
+             LEFT JOIN lexentry_display USING (lexentry)
         ORDER BY trans_entity
     )
-    GROUP BY lexentry, written_rep, sense, sense_num
+    GROUP BY lexentry, display, display_addition, sense, sense_num
     ORDER BY sense_num, min(trans_entity)
 )
-GROUP BY lexentry, written_rep, trans_list
+GROUP BY lexentry, display, display_addition, trans_list
 ORDER BY lexentry, min_trans_entity;
 
-
-DROP VIEW IF EXISTS csv;
-CREATE TEMP VIEW csv AS
-SELECT *
-FROM (
-    SELECT lexentry, written_rep, group_concat(sense, ' | ') AS sense_list, trans_list
-    FROM (
-        SELECT lexentry, written_rep, sense, sense_num, group_concat(trans, ' | ') AS trans_list
-        FROM merged_translation
-        GROUP BY lexentry, written_rep, sense, sense_num
-    )
-    GROUP BY lexentry, written_rep, trans_list
-    --HAVING count(*) > 1
-)
-ORDER BY written_rep
-;
-
--- SELECT written_rep, group_concat(pronun_list, ' | ') FROM (SELECT written_rep, pronun_list FROM entry GROUP BY written_rep) GROUP BY written_rep
