@@ -55,9 +55,11 @@ def make_prod_single(lang, **kwargs):
                 FROM form
                 WHERE pos = 'noun'
                     AND "case" = 'Nominative'
-                    AND coalesce(inflection, '') != 'StrongInflection'
+                    AND (inflection = 'WeakInflection'
+                         OR inflection IS NULL)
             )
-            SELECT lexentry, singular AS display, 'Pl.: ' || plural AS display_addition
+            SELECT lexentry, singular AS display,
+                'Pl.: ' || plural AS display_addition
             FROM (
                 SELECT lexentry, other_written AS singular
                 FROM noun
