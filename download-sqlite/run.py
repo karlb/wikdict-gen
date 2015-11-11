@@ -229,6 +229,14 @@ def make_entry(lang, **kwargs):
     sparql.get_query('entry', sparql.entry_query, lang=lang)
 
 
+def make_importance(lang, **kwargs):
+    sparql.get_query('importance', sparql.importance_query, lang=lang)
+
+
+def make_typeahead(lang, **kwargs):
+    pass
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -274,6 +282,14 @@ if __name__ == '__main__':
     inter.add_argument('from_lang')
     inter.add_argument('to_lang')
     inter.set_defaults(func=interactive)
+
+    importance = subparsers.add_parser('importance')
+    importance.add_argument('lang')
+    importance.set_defaults(func=make_importance)
+
+    typeahead = subparsers.add_parser('typeahead')
+    typeahead.add_argument('lang')
+    typeahead.set_defaults(func=make_typeahead)
 
     args = parser.parse_args()
     args.func(**vars(args))

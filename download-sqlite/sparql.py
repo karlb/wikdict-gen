@@ -22,6 +22,7 @@ translation_query_type = {
     'el': 'sense',
     'ru': 'sense',
     'tr': 'sense',
+    #'ja': 'gloss',
 }
 
 form_query = """
@@ -105,15 +106,43 @@ translation_query = {
 }
 
 
+importance_query = """
+    SELECT *
+    WHERE {
+        SELECT ?vocable
+            count(DISTINCT ?lexentry) AS ?lexentry_count
+            count(DISTINCT ?sense) AS ?sense_count
+            count(DISTINCT ?synonym) AS ?synonym_count
+            count(DISTINCT ?translation) AS ?translation_count
+        WHERE {
+            ?vocable dbnary:refersTo ?lexentry .
+            OPTIONAL {
+                ?synonym dbnary:synonym ?vocable .
+            }
+            OPTIONAL {
+                ?translation dbnary:isTranslationOf ?lexentry.
+            }
+            ?lexentry dcterms:language lexvo:deu ;
+                        lemon:sense ?sense ;
+                        lexinfo:partOfSpeech ?pos .
+
+            FILTER (?pos NOT IN (lexinfo:abbreviation, lexinfo:letter))
+        }
+    }
+    ORDER BY DESC(bif:sqrt(?translation_count) + bif:sqrt(?synonym_count))
+"""
+
+
 def make_url(query, **fmt_args):
     assert fmt_args['limit'] <= 1048576, 'Virtuoso does not support more than 1048576 results'
     #server = 'http://kaiko.getalp.org'
     server = 'http://localhost:8890'
+    if 'ORDER BY' not in query:
+        query += '\nORDER BY 1'
     query = """
         SELECT *
         WHERE {
             %s
-            ORDER BY 1
         }
         OFFSET %%(offset)s
         LIMIT %%(limit)s
