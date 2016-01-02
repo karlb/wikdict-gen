@@ -246,8 +246,20 @@ def make_importance(langs, **kwargs):
 
 def make_typeahead_single(lang):
     conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % lang)
+
+    # When searching in two languages, the more popular one will have
+    # the higher importance scores for words. To show at least some
+    # results from the less poplular language, we normalize the scores
+    # for the typeahead
     rows = conn.execute("""
-        SELECT lower(substr(x, 1, 3)) AS prefix, x, score
+        SELECT lower(substr(x, 1, 3)) AS prefix, x,
+            score / (
+                SELECT avg(score)
+                FROM (
+                    SELECT * FROM importance
+                    ORDER BY score DESC LIMIT 10000
+                )
+            )
         FROM (
             SELECT substr(vocable, 5) AS x, score AS score
             FROM importance
