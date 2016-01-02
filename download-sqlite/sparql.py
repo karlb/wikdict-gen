@@ -107,7 +107,8 @@ translation_query = {
 
 
 importance_query = """
-    SELECT *
+    SELECT ?vocable
+        bif:sqrt(?translation_count) + bif:sqrt(?synonym_count) AS ?score
     WHERE {
         SELECT ?vocable
             count(DISTINCT ?lexentry) AS ?lexentry_count
@@ -116,20 +117,23 @@ importance_query = """
             count(DISTINCT ?translation) AS ?translation_count
         WHERE {
             ?vocable dbnary:refersTo ?lexentry .
+            ?lexentry dcterms:language lexvo:%(lang3)s .
             OPTIONAL {
                 ?synonym dbnary:synonym ?vocable .
             }
             OPTIONAL {
                 ?translation dbnary:isTranslationOf ?lexentry.
             }
-            ?lexentry dcterms:language lexvo:deu ;
-                        lemon:sense ?sense ;
-                        lexinfo:partOfSpeech ?pos .
-
+            OPTIONAL {
+                ?lexentry lemon:sense ?sense .
+            }
+            OPTIONAL {
+                ?lexentry lexinfo:partOfSpeech ?pos .
+            }
             FILTER (?pos NOT IN (lexinfo:abbreviation, lexinfo:letter))
         }
     }
-    ORDER BY DESC(bif:sqrt(?translation_count) + bif:sqrt(?synonym_count))
+    ORDER BY DESC(?score)
 """
 
 

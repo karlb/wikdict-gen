@@ -3,7 +3,11 @@ import os
 import sqlite3
 import argparse
 import subprocess
-from itertools import permutations
+import codecs
+import re
+import urllib
+import json
+from itertools import permutations, groupby
 
 import sparql
 
@@ -227,14 +231,67 @@ def make_form(lang, **kwargs):
 
 def make_entry(lang, **kwargs):
     sparql.get_query('entry', sparql.entry_query, lang=lang)
+    # TODO: reject bad rows:
+    #   * written_rep IS NULL
+    #   * written_rep = ''
 
 
-def make_importance(lang, **kwargs):
-    sparql.get_query('importance', sparql.importance_query, lang=lang)
+def make_importance(langs, **kwargs):
+    if langs == ['all']:
+        langs = sparql.translation_query_type.keys()
+    for lang in langs:
+        print 'Lang:', lang
+        sparql.get_query('importance', sparql.importance_query, lang=lang)
 
 
-def make_typeahead(lang, **kwargs):
-    pass
+def make_typeahead_single(lang):
+    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % lang)
+    rows = conn.execute("""
+        SELECT lower(substr(x, 1, 3)) AS prefix, x, score
+        FROM (
+            SELECT substr(vocable, 5) AS x, score AS score
+            FROM importance
+            WHERE lower(substr(vocable, 5)) IN (
+                SELECT lower(written_rep) FROM entry
+            )
+        )
+        ORDER BY 1, score DESC
+    """)
+
+    # make prefix dir for this language
+    path = os.path.expanduser('~/tools/typeahead2/%s' % lang)
+    try:
+        os.mkdir(path)
+    except OSError:
+        pass
+
+    def save_typeahead(filename, prefix_rows):
+        encoded_prefix = urllib.quote_plus(filename)
+        filename = path + '/' + encoded_prefix + '.json'
+        with codecs.open(filename, 'w', 'utf8') as f:
+            words = [r[1:] for r in prefix_rows]
+            f.write(json.dumps(words))
+
+    # save words to [prefix].txt
+    #singles = []
+    for prefix, prefix_rows in groupby(rows, lambda row: row[0]):
+        if len(prefix) < 3:
+            # print 'Skip short prefix %s' % prefix
+            continue
+        prefix_rows = list(prefix_rows)
+        #if len(prefix_rows) =< 1:
+        #    singles += prefix_rows
+        #    continue
+        save_typeahead(prefix.encode('utf8'), prefix_rows)
+    #save_typeahead('_singles', singles)
+
+
+def make_typeahead(langs, **kwargs):
+    if langs == ['all']:
+        langs = sparql.translation_query_type.keys()
+    for lang in langs:
+        print 'Lang:', lang
+        make_typeahead_single(lang)
 
 
 if __name__ == '__main__':
@@ -284,11 +341,11 @@ if __name__ == '__main__':
     inter.set_defaults(func=interactive)
 
     importance = subparsers.add_parser('importance')
-    importance.add_argument('lang')
+    importance.add_argument('langs', nargs='+', metavar='lang')
     importance.set_defaults(func=make_importance)
 
     typeahead = subparsers.add_parser('typeahead')
-    typeahead.add_argument('lang')
+    typeahead.add_argument('langs', nargs='+', metavar='lang')
     typeahead.set_defaults(func=make_typeahead)
 
     args = parser.parse_args()
