@@ -3,6 +3,7 @@ import urllib2
 from urllib import urlencode
 import sqlite3
 import re
+import json
 
 from languages import language_codes3
 
@@ -157,7 +158,7 @@ def make_url(query, **fmt_args):
     url = server + '/sparql?' + urlencode({
         'default-graph-uri': '',
         'query': query % fmt_args,
-        'format': 'text/csv',
+        'format': 'application/json',
         'timeout': 0,
     })
     #print query % fmt_args
@@ -193,9 +194,14 @@ def get_query(table_name, query, **kwargs):
         except urllib2.HTTPError as e:
             print e.read()
             raise
-        reader = csv.reader(response)
-        cols = next(reader)
-        result = list(reader)
+        raw_json = response.read()
+        # fix invalid json as described in
+        # http://stackoverflow.com/a/20422447/114926
+        raw_json = raw_json.decode("unicode_escape")
+        data = json.loads(raw_json)
+
+        cols = data['head']['vars']
+        result = data['results']['bindings']
         joined_result += result
         if len(result) < limit:
             break
@@ -203,38 +209,61 @@ def get_query(table_name, query, **kwargs):
             offset += limit
             print '.'
 
+    sql_types = {
+        'http://www.w3.org/2001/XMLSchema#integer': 'int',
+        'http://www.w3.org/2001/XMLSchema#decimal': 'real',
+        'http://www.w3.org/2001/XMLSchema#double': 'real',
+        None: 'text',
+    }
+    col_types = [
+        sql_types[
+            joined_result[0][col_name].get('datatype')
+        ]
+        for col_name in cols
+    ]
     conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % db_name)
     conn.execute("DROP TABLE IF EXISTS %s" % table_name)
     conn.execute("CREATE TABLE %s (%s)" % (
             table_name,
-            ', '.join('"%s" text' % c for c in cols)
+            ', '.join('"%s" %s' % col_desc
+                      for col_desc in zip(cols, col_types))
         )
     )
 
-    def postprocess_cell(c, col_name):
-        if c == '':
-            return None
-        c = unicode(c, 'utf-8')
+    py_types = {
+        'http://www.w3.org/2001/XMLSchema#integer': int,
+        'http://www.w3.org/2001/XMLSchema#decimal': float,
+        'http://www.w3.org/2001/XMLSchema#double': float,
+    }
 
+    def postprocess_literal(col_name, value, **kwargs):
         if lang == 'fr' and col_name == 'sense':
             # remove sense number references from the end of the gloss
-            return fr_sense_re.match(c).group(1)
+            return fr_sense_re.match(value).group(1)
 
         if col_name == 'sense_num':
-            return normalize_sense_num(c)
+            return normalize_sense_num(value)
 
-        return namespace_re.sub('', c)
+        return value
+
+    postprocess = {
+        'literal': postprocess_literal,
+        'uri':
+            lambda col_name, value, **kwargs: namespace_re.sub('', value),
+        'typed-literal':
+            lambda col_name, value, datatype, **kwargs: py_types[datatype](value)
+    }
 
     def postprocess_row(row):
-        for cells in row:
-            yield [postprocess_cell(c, col_name)
-                   for c, col_name in zip(cells, cols)]
+        for col_name in cols:
+            cell = row[col_name]
+            yield postprocess[cell['type']](col_name, **cell)
 
     print 'Inserting into db'
     conn.executemany("INSERT INTO %s VALUES (%s)" % (
                         table_name, ', '.join(['?'] * len(cols))
                      ),
-                     postprocess_row(joined_result))
+                     [list(postprocess_row(r)) for r in joined_result])
     print 'Inserted', len(joined_result), 'rows'
 
     conn.commit()
@@ -244,3 +273,4 @@ def get_query(table_name, query, **kwargs):
 def get_translations(from_lang, to_lang, **kwargs):
     query = translation_query[translation_query_type[from_lang]]
     get_query('translation', query, from_lang=from_lang, to_lang=to_lang)
+
