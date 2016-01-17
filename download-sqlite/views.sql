@@ -76,7 +76,7 @@ FROM (
         min(trans_entity) AS min_trans_entity
     FROM (
         SELECT lexentry, written_rep,
-               sense, sense_num, trans, trans_entity
+               parse_html(sense) AS sense, sense_num, trans, trans_entity
         FROM lang_pair.translation
              JOIN entry USING (lexentry)
         ORDER BY trans_entity

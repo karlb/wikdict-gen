@@ -10,11 +10,13 @@ import json
 from itertools import permutations, groupby
 
 import sparql
+from parse import html_parser
 
 VIEW_FILENAME = os.path.dirname(os.path.realpath(__file__)) + '/views.sql'
 
 
 def apply_views(conn):
+    conn.create_function('parse_html', 1, html_parser.parse)
     with open(VIEW_FILENAME) as f:
         f.readline()  # skip first line
         conn.executescript(f.read())
@@ -219,7 +221,7 @@ def make_complete_pair(langs, **kwargs):
     for from_lang, to_lang in permutations(langs, 2):
         print from_lang, to_lang
         sparql.get_translations(from_lang, to_lang)
-    print 'Get translations'
+    print 'Make prod translations'
     for from_lang, to_lang in permutations(langs, 2):
         print from_lang, to_lang
         make_prod_pair(from_lang, to_lang)
