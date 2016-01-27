@@ -13,6 +13,7 @@ import sparql
 from parse import html_parser
 
 VIEW_FILENAME = os.path.dirname(os.path.realpath(__file__)) + '/views.sql'
+BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 def apply_views(conn):
@@ -88,14 +89,33 @@ def make_prod_single(lang, **kwargs):
         """)
 
     print 'Prepare entry'
+    conn.enable_load_extension(True)
+    conn.load_extension(BASE_PATH + '/lib/spellfix1')
     conn.executescript("""
         DROP TABLE IF EXISTS prod.entry;
         CREATE TABLE prod.entry AS
         SELECT entry.*, display, display_addition
         FROM entry
-             LEFT JOIN lexentry_display USING (lexentry);
+             LEFT JOIN lexentry_display USING (lexentry)
+        WHERE written_rep IS NOT NULL;
 
         CREATE INDEX prod.entry_written_rep_idx ON entry(written_rep);
+
+        -- spellfix
+        --DROP TABLE IF EXISTS prod.search_trans_aux;
+        --CREATE VIRTUAL TABLE prod.search_trans_aux USING fts4aux(search_trans);
+        DROP TABLE IF EXISTS prod.spellfix_entry;
+        CREATE VIRTUAL TABLE prod.spellfix_entry USING spellfix1;
+        INSERT INTO prod.spellfix_entry(word, rank)
+        --SELECT term FROM prod.search_trans_aux WHERE col='*';
+        SELECT DISTINCT
+            written_rep,
+            score * score * score * score * score AS rank  -- incease weight of rank over distance
+        FROM prod.entry
+            JOIN (
+                SELECT substr(vocable, 5) AS written_rep, score
+                FROM importance
+            ) USING (written_rep);
     """)
 
     conn.close()
@@ -109,6 +129,7 @@ def interactive(from_lang, to_lang, **kwargs):
         f.write(attach_dbs(from_lang, to_lang))
         f.write('\n.read ' + VIEW_FILENAME)
     subprocess.check_call(
+        #'sqlite3 '
         '/usr/local/Cellar/sqlite/3.8.10.2/bin/sqlite3 '
         '-init /tmp/attach_dbs.sql dictionaries/sqlite/%s.sqlite3' % from_lang,
         shell=True)
@@ -123,6 +144,8 @@ def attach_dbs(from_lang, to_lang):
         ATTACH DATABASE 'dictionaries/sqlite/{to_lang}-{from_lang}.sqlite3' AS other_pair;
         ATTACH DATABASE 'dictionaries/sqlite/prod/{from_lang}-{to_lang}.sqlite3' AS prod;
         ATTACH DATABASE 'dictionaries/sqlite/prod/wikdict.sqlite3' AS wikdict;
+        ATTACH DATABASE 'dictionaries/sqlite/prod/{from_lang}.sqlite3' AS prod_lang;
+        ATTACH DATABASE 'dictionaries/sqlite/prod/{to_lang}.sqlite3' AS prod_other;
     """.format(from_lang=from_lang, to_lang=to_lang)
 
 
@@ -146,15 +169,20 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
                 SELECT lexentry, part_of_speech
                 FROM entry
             ) USING (lexentry)
-        ORDER BY grouped_translation_table.rowid
+        ORDER BY grouped_translation_table.rowid;
+        CREATE INDEX prod.translation_lexentry_idx ON translation('lexentry');
+        CREATE INDEX prod.translation_written_rep_idx ON translation('written_rep');
     """)
 
     print 'Prepare search index'
     conn.executescript("""
+        -- search table
         DROP TABLE IF EXISTS prod.search_trans;
         CREATE VIRTUAL TABLE prod.search_trans USING fts4(
             form, lexentry, tokenize=unicode61, notindexed=lexentry
         );
+
+        -- insert data
         INSERT INTO prod.search_trans
         SELECT written_rep, lexentry
         FROM prod.translation
@@ -163,7 +191,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
         FROM form
         WHERE lexentry IN (
             SELECT lexentry FROM prod.translation
-        )
+        );
     """)
 
     print 'Prepare search index (reversed translation)'

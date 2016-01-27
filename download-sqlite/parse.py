@@ -74,6 +74,8 @@ class MyHTMLParser(HTMLParser):
         self.tag_data += c
 
     def parse(self, html):
+        if html is None:
+            return None
         self.output = u''
         self.tag_stack = []
         self.tag_data = ''
