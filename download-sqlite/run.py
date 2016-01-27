@@ -12,13 +12,12 @@ from itertools import permutations, groupby
 import sparql
 from parse import html_parser
 
-VIEW_FILENAME = os.path.dirname(os.path.realpath(__file__)) + '/views.sql'
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-def apply_views(conn):
+def apply_views(conn, view_file='views.sql'):
     conn.create_function('parse_html', 1, html_parser.parse)
-    with open(VIEW_FILENAME) as f:
+    with open(BASE_PATH + '/' + view_file) as f:
         f.readline()  # skip first line
         conn.executescript(f.read())
 
@@ -52,6 +51,7 @@ def make_prod_single(lang, **kwargs):
     conn.execute(
         "ATTACH DATABASE 'dictionaries/sqlite/prod/%s.sqlite3' AS prod"
         % (lang))
+    apply_views(conn, 'single_views.sql')
 
     if lang == 'de':
         conn.executescript("""
@@ -110,12 +110,13 @@ def make_prod_single(lang, **kwargs):
         --SELECT term FROM prod.search_trans_aux WHERE col='*';
         SELECT DISTINCT
             written_rep,
-            score * score * score * score * score AS rank  -- incease weight of rank over distance
+            score * score * score AS rank  -- incease weight of rank over distance
         FROM prod.entry
             JOIN (
-                SELECT substr(vocable, 5) AS written_rep, score
-                FROM importance
-            ) USING (written_rep);
+                SELECT substr(vocable, 5) AS written_rep,
+                       rel_score * 100 AS score
+                FROM rel_importance
+            ) USING (written_rep)
     """)
 
     conn.close()
@@ -276,28 +277,18 @@ def make_importance(langs, **kwargs):
 
 def make_typeahead_single(lang):
     conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % lang)
+    apply_views(conn, 'single_views.sql')
 
-    # When searching in two languages, the more popular one will have
-    # the higher importance scores for words. To show at least some
-    # results from the less poplular language, we normalize the scores
-    # for the typeahead
     rows = conn.execute("""
-        SELECT lower(substr(x, 1, 3)) AS prefix, x,
-            score / (
-                SELECT avg(score)
-                FROM (
-                    SELECT * FROM importance
-                    ORDER BY score DESC LIMIT 10000
-                )
-            )
+        SELECT lower(substr(x, 1, 3)) AS prefix, x, rel_score
         FROM (
-            SELECT substr(vocable, 5) AS x, score AS score
-            FROM importance
+            SELECT substr(vocable, 5) AS x, rel_score
+            FROM rel_importance
             WHERE lower(substr(vocable, 5)) IN (
                 SELECT lower(written_rep) FROM entry
             )
         )
-        ORDER BY 1, score DESC
+        ORDER BY 1, rel_score DESC
     """)
 
     # make prefix dir for this language

@@ -1,4 +1,4 @@
-.shell clear
+-- Views for a pair of languages (can be across databases)
 
 -- Build a list of translations by using the translations from the other language and reversing the translation order
 DROP VIEW IF EXISTS main.reverse_trans;
