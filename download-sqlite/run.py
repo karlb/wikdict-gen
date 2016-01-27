@@ -128,7 +128,8 @@ def make_prod_single(lang, **kwargs):
 def interactive(from_lang, to_lang, **kwargs):
     with open('/tmp/attach_dbs.sql', 'w') as f:
         f.write(attach_dbs(from_lang, to_lang))
-        f.write('\n.read ' + VIEW_FILENAME)
+        f.write('\n.read ' + BASE_PATH + '/views.sql\n')
+        f.write('.headers on\n.mode column\n.load download-sqlite/lib/spellfix1')
     subprocess.check_call(
         #'sqlite3 '
         '/usr/local/Cellar/sqlite/3.8.10.2/bin/sqlite3 '
@@ -230,14 +231,17 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
                     ).execute('VACUUM')
 
 
-def make_complete_lang(langs, **kwargs):
+def make_for_langs(functions, langs, **kwargs):
+    """ Executes functions for all given languages
+
+        `langs` can also be "all" to execute on all supported languages.
+    """
     if langs == ['all']:
         langs = sparql.translation_query_type.keys()
     for lang in langs:
         print 'Lang:', lang
-        make_form(lang)
-        make_entry(lang)
-        make_prod_single(lang)
+        for func in functions:
+            func(lang)
 
 
 def make_for_lang_permutations(functions, langs, **kwargs):
@@ -359,12 +363,18 @@ if __name__ == '__main__':
     )
 
     prod_single = subparsers.add_parser('prod')
-    prod_single.add_argument('lang')
-    prod_single.set_defaults(func=make_prod_single)
+    prod_single.add_argument('lang', nargs='+')
+    prod_single.set_defaults(
+        func=lambda lang, **kwargs: make_for_langs(
+            [make_prod_single], lang)
+    )
 
     complete_lang = subparsers.add_parser('complete_lang')
     complete_lang.add_argument('langs', nargs='+', metavar='lang')
-    complete_lang.set_defaults(func=make_complete_lang)
+    complete_lang.set_defaults(
+        func=lambda lang, **kwargs: make_for_langs(
+            [make_form, make_entry, make_prod_single], lang)
+    )
 
     complete_pair = subparsers.add_parser('complete_pair')
     complete_pair.add_argument('langs', nargs='+', metavar='lang')
