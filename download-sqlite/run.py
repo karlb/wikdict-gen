@@ -240,20 +240,20 @@ def make_complete_lang(langs, **kwargs):
         make_prod_single(lang)
 
 
-def make_complete_pair(langs, **kwargs):
+def make_for_lang_permutations(functions, langs, **kwargs):
+    """ Executes functions for all pairwise combinations of the given langs.
+
+        `langs` can also be "all" to execute on all supported languages.
+    """
     if langs == ['all']:
         langs = sparql.translation_query_type.keys()
     assert len(langs) >= 2, 'Need at least two languages'
-    #for lang in (from_lang, to_lang):
-    #    make_complete_lang([lang])
-    print 'Get translations'
-    for from_lang, to_lang in permutations(langs, 2):
-        print from_lang, to_lang
-        sparql.get_translations(from_lang, to_lang)
-    print 'Make prod translations'
-    for from_lang, to_lang in permutations(langs, 2):
-        print from_lang, to_lang
-        make_prod_pair(from_lang, to_lang)
+
+    for func in functions:
+        print '>> ' + func.__name__
+        for from_lang, to_lang in permutations(langs, 2):
+            print from_lang, to_lang
+            func(from_lang, to_lang)
 
 
 def make_form(lang, **kwargs):
@@ -352,9 +352,11 @@ if __name__ == '__main__':
     search.set_defaults(func=search_query)
 
     prod_pair = subparsers.add_parser('prod_pair')
-    prod_pair.add_argument('from_lang')
-    prod_pair.add_argument('to_lang')
-    prod_pair.set_defaults(func=make_prod_pair)
+    prod_pair.add_argument('langs', nargs='+', metavar='lang')
+    prod_pair.set_defaults(
+        func=lambda langs, **kwargs: make_for_lang_permutations(
+            [make_prod_pair], langs)
+    )
 
     prod_single = subparsers.add_parser('prod')
     prod_single.add_argument('lang')
@@ -366,7 +368,10 @@ if __name__ == '__main__':
 
     complete_pair = subparsers.add_parser('complete_pair')
     complete_pair.add_argument('langs', nargs='+', metavar='lang')
-    complete_pair.set_defaults(func=make_complete_pair)
+    complete_pair.set_defaults(
+        func=lambda langs, **kwargs: make_for_lang_permutations(
+            [sparql.get_translation, make_prod_pair], langs)
+    )
 
     inter = subparsers.add_parser('interactive')
     inter.add_argument('from_lang')
