@@ -239,8 +239,8 @@ def make_for_langs(functions, langs, **kwargs):
     if langs == ['all']:
         langs = sparql.translation_query_type.keys()
     for lang in langs:
-        print 'Lang:', lang
         for func in functions:
+            print lang, func.__name__
             func(lang)
 
 
@@ -271,12 +271,8 @@ def make_entry(lang, **kwargs):
     #   * written_rep = ''
 
 
-def make_importance(langs, **kwargs):
-    if langs == ['all']:
-        langs = sparql.translation_query_type.keys()
-    for lang in langs:
-        print 'Lang:', lang
-        sparql.get_query('importance', sparql.importance_query, lang=lang)
+def make_importance(lang, **kwargs):
+    sparql.get_query('importance', sparql.importance_query, lang=lang)
 
 
 def make_typeahead_single(lang):
@@ -372,8 +368,8 @@ if __name__ == '__main__':
     complete_lang = subparsers.add_parser('complete_lang')
     complete_lang.add_argument('langs', nargs='+', metavar='lang')
     complete_lang.set_defaults(
-        func=lambda lang, **kwargs: make_for_langs(
-            [make_form, make_entry, make_prod_single], lang)
+        func=lambda langs, **kwargs: make_for_langs(
+            [make_form, make_entry, make_importance, make_prod_single], langs)
     )
 
     complete_pair = subparsers.add_parser('complete_pair')
@@ -390,7 +386,10 @@ if __name__ == '__main__':
 
     importance = subparsers.add_parser('importance')
     importance.add_argument('langs', nargs='+', metavar='lang')
-    importance.set_defaults(func=make_importance)
+    importance.set_defaults(
+        func=lambda langs, **kwargs: make_for_langs(
+            [make_importance], langs)
+    )
 
     typeahead = subparsers.add_parser('typeahead')
     typeahead.add_argument('langs', nargs='+', metavar='lang')
