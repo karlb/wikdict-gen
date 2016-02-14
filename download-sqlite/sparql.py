@@ -195,9 +195,10 @@ def get_query(table_name, query, **kwargs):
             print e.read()
             raise
         raw_json = response.read()
-        # fix invalid json as described in
-        # http://stackoverflow.com/a/20422447/114926
-        raw_json = raw_json.decode("unicode_escape")
+        #with open('debug.json', 'w') as f:
+        #    f.write(raw_json)
+        #raw_json = raw_json.decode("unicode_escape")
+        #raw_json = open('debug.json').read()
         data = json.loads(raw_json)
 
         cols = data['head']['vars']
@@ -209,6 +210,10 @@ def get_query(table_name, query, **kwargs):
             offset += limit
             print '.'
 
+    if not joined_result:
+        print 'No results!'
+        return
+
     sql_types = {
         'http://www.w3.org/2001/XMLSchema#integer': 'int',
         'http://www.w3.org/2001/XMLSchema#decimal': 'real',
@@ -217,7 +222,7 @@ def get_query(table_name, query, **kwargs):
     }
     col_types = [
         sql_types[
-            joined_result[0][col_name].get('datatype')
+            joined_result[0].get(col_name, {}).get('datatype')
         ]
         for col_name in cols
     ]
@@ -237,6 +242,15 @@ def get_query(table_name, query, **kwargs):
     }
 
     def postprocess_literal(col_name, value, **kwargs):
+        # TODO: has this been fixed, so this code can be removed?
+        #
+        # virtuoso does not properly handle unicode, so we have to decode
+        # explicitly, here. See http://stackoverflow.com/a/20422447/114926
+        # This cannot be done on the whole json, because it leads to unescaped
+        # tabs in json strings, which is not valid json.
+        #print repr(value)
+        #value = value.decode("unicode_escape")
+
         if lang == 'fr' and col_name == 'sense':
             # remove sense number references from the end of the gloss
             return fr_sense_re.match(value).group(1)
@@ -256,6 +270,9 @@ def get_query(table_name, query, **kwargs):
 
     def postprocess_row(row):
         for col_name in cols:
+            if col_name not in row:
+                yield None
+                continue
             cell = row[col_name]
             yield postprocess[cell['type']](col_name, **cell)
 
