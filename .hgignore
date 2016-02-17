@@ -4,7 +4,6 @@ syntax: glob
 *.pyc
 .DS_Store
 .ropeproject
-dictionaries/*/*
-dictionaries/I*
+dictionaries
 virt
 virt.orig
