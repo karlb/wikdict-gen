@@ -237,6 +237,7 @@ def get_query(table_name, query, **kwargs):
         'http://www.w3.org/2001/XMLSchema#integer': 'int',
         'http://www.w3.org/2001/XMLSchema#decimal': 'real',
         'http://www.w3.org/2001/XMLSchema#double': 'real',
+        'http://www.w3.org/2001/XMLSchema#string': 'text',
         None: 'text',
     }
     col_types = [
@@ -258,6 +259,7 @@ def get_query(table_name, query, **kwargs):
         'http://www.w3.org/2001/XMLSchema#integer': int,
         'http://www.w3.org/2001/XMLSchema#decimal': float,
         'http://www.w3.org/2001/XMLSchema#double': float,
+        'http://www.w3.org/2001/XMLSchema#string': unicode,
     }
 
     def postprocess_literal(col_name, value, **kwargs):
@@ -307,7 +309,7 @@ def get_query(table_name, query, **kwargs):
     conn.close()
 
 
-def get_translations(from_lang, to_lang, **kwargs):
+def get_translation(from_lang, to_lang, **kwargs):
     query = translation_query[translation_query_type[from_lang]]
     get_query('translation', query, from_lang=from_lang, to_lang=to_lang)
 

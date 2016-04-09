@@ -343,7 +343,7 @@ if __name__ == '__main__':
     translation = subparsers.add_parser('translation')
     translation.add_argument('from_lang')
     translation.add_argument('to_lang')
-    translation.set_defaults(func=sparql.get_translations)
+    translation.set_defaults(func=sparql.get_translation)
 
     search = subparsers.add_parser('search')
     search.add_argument('from_lang')
