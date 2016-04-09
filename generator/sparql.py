@@ -4,6 +4,7 @@ from urllib import urlencode
 import sqlite3
 import re
 import json
+from itertools import chain
 
 from languages import language_codes3
 
@@ -174,6 +175,41 @@ def normalize_sense_num(c):
     return normalized_sense_num
 
 
+def page_through_results(query, limit, **kwargs):
+    offset = 0
+    while True:
+        url = make_url(query, limit=limit, offset=offset, **kwargs)
+        try:
+            response = urllib2.urlopen(url)
+        except urllib2.HTTPError as e:
+            print e.read()
+            raise
+        #raw_json = response.read()
+        #with open('debug.json', 'w') as f:
+        #    f.write(raw_json)
+        #raw_json = raw_json.decode("unicode_escape")
+        #raw_json = open('debug.json').read()
+        #data = json.loads(raw_json)
+
+        # This should be
+        #    data = json.load(response)
+        # but virtuoso generates invalid json, so we have to work around it.
+        # See https://github.com/dbpedia/extraction-framework/issues/318
+        from codecs import raw_unicode_escape_decode
+        json_data = raw_unicode_escape_decode(response.read())[0]
+        data = json.loads(json_data)
+
+        global cols
+        cols = data['head']['vars']
+        result = data['results']['bindings']
+        yield result
+        if len(result) < limit:
+            break
+        else:
+            offset += limit
+            print '.'
+
+
 def get_query(table_name, query, **kwargs):
     if 'lang' in kwargs:
         lang = kwargs['lang']
@@ -184,35 +220,18 @@ def get_query(table_name, query, **kwargs):
         db_name = '{}-{}'.format(kwargs['from_lang'], kwargs['to_lang'])
 
     print 'Executing SPARQL query'
-    offset = 0
-    joined_result = []
-    limit = int(1e6)
-    while True:
-        url = make_url(query, limit=limit, offset=offset, **kwargs)
-        try:
-            response = urllib2.urlopen(url)
-        except urllib2.HTTPError as e:
-            print e.read()
-            raise
-        raw_json = response.read()
-        #with open('debug.json', 'w') as f:
-        #    f.write(raw_json)
-        #raw_json = raw_json.decode("unicode_escape")
-        #raw_json = open('debug.json').read()
-        data = json.loads(raw_json)
+    limit = int(5e5)
+    batches = page_through_results(query, limit=limit, **kwargs)
+    results = chain.from_iterable(batches)
 
-        cols = data['head']['vars']
-        result = data['results']['bindings']
-        joined_result += result
-        if len(result) < limit:
-            break
-        else:
-            offset += limit
-            print '.'
-
-    if not joined_result:
+    try:
+        first_result = next(results)
+    except StopIteration:
         print 'No results!'
         return
+
+    # put first result back into iterable
+    results = chain([first_result], results)
 
     sql_types = {
         'http://www.w3.org/2001/XMLSchema#integer': 'int',
@@ -222,7 +241,7 @@ def get_query(table_name, query, **kwargs):
     }
     col_types = [
         sql_types[
-            joined_result[0].get(col_name, {}).get('datatype')
+            first_result.get(col_name, {}).get('datatype')
         ]
         for col_name in cols
     ]
@@ -277,11 +296,12 @@ def get_query(table_name, query, **kwargs):
             yield postprocess[cell['type']](col_name, **cell)
 
     print 'Inserting into db'
-    conn.executemany("INSERT INTO %s VALUES (%s)" % (
+    cur = conn.cursor()
+    cur.executemany("INSERT INTO %s VALUES (%s)" % (
                         table_name, ', '.join(['?'] * len(cols))
                      ),
-                     [list(postprocess_row(r)) for r in joined_result])
-    print 'Inserted', len(joined_result), 'rows'
+                     (list(postprocess_row(r)) for r in results))
+    print 'Inserted', cur.rowcount, 'rows'
 
     conn.commit()
     conn.close()
