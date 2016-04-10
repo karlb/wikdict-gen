@@ -212,6 +212,41 @@ def page_through_results(query, limit, **kwargs):
             print '.'
 
 
+def create_table(conn, table_name, first_result=None):
+    sql_filename = 'sql/sparql/{}.sql'.format(table_name)
+    if first_result:
+        sql_types = {
+            'http://www.w3.org/2001/XMLSchema#integer': 'int',
+            'http://www.w3.org/2001/XMLSchema#decimal': 'real',
+            'http://www.w3.org/2001/XMLSchema#double': 'real',
+            'http://www.w3.org/2001/XMLSchema#string': 'text',
+            None: 'text',
+        }
+        col_types = [
+            sql_types[
+                first_result.get(col_name, {}).get('datatype')
+            ]
+            for col_name in cols
+        ]
+        sql = """
+            DROP TABLE IF EXISTS {table_name};
+            CREATE TABLE {table_name} ({col_def});
+        """.format(table_name=table_name,
+                   col_def=', '.join('"%s" %s' % col_desc
+                           for col_desc in zip(cols, col_types))
+                  )
+        # Save definition to file. This is required for cases where the query
+        # returns no results, so that we can't determine the columns and types
+        # from the result.
+        with open(sql_filename, 'w') as f:
+            f.write(sql)
+    else:
+        with open(sql_filename) as f:
+            sql = f.read()
+
+    conn.executescript(sql)
+
+
 def get_query(table_name, query, **kwargs):
     if 'lang' in kwargs:
         lang = kwargs['lang']
@@ -225,37 +260,19 @@ def get_query(table_name, query, **kwargs):
     limit = int(5e5)
     batches = page_through_results(query, limit=limit, **kwargs)
     results = chain.from_iterable(batches)
+    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % db_name)
 
     try:
         first_result = next(results)
     except StopIteration:
         print 'No results!'
+        create_table(conn, table_name)  # create empty table
         return
 
     # put first result back into iterable
     results = chain([first_result], results)
 
-    sql_types = {
-        'http://www.w3.org/2001/XMLSchema#integer': 'int',
-        'http://www.w3.org/2001/XMLSchema#decimal': 'real',
-        'http://www.w3.org/2001/XMLSchema#double': 'real',
-        'http://www.w3.org/2001/XMLSchema#string': 'text',
-        None: 'text',
-    }
-    col_types = [
-        sql_types[
-            first_result.get(col_name, {}).get('datatype')
-        ]
-        for col_name in cols
-    ]
-    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % db_name)
-    conn.execute("DROP TABLE IF EXISTS %s" % table_name)
-    conn.execute("CREATE TABLE %s (%s)" % (
-            table_name,
-            ', '.join('"%s" %s' % col_desc
-                      for col_desc in zip(cols, col_types))
-        )
-    )
+    create_table(conn, table_name, first_result)
 
     py_types = {
         'http://www.w3.org/2001/XMLSchema#integer': int,
