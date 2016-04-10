@@ -1,5 +1,5 @@
-DROP TABLE IF EXISTS lang_pair;
-CREATE TABLE lang_pair (
+--DROP TABLE IF EXISTS lang_pair;
+CREATE TABLE IF NOT EXISTS lang_pair (
     from_lang text,
     to_lang text,
     translations int,

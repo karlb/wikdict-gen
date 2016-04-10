@@ -140,6 +140,11 @@ def interactive(from_lang, to_lang, **kwargs):
 
 
 def attach_dbs(from_lang, to_lang):
+    main_db_filename = 'dictionaries/sqlite/prod/wikdict.sqlite3'
+    if not os.path.isfile(main_db_filename):
+        conn = sqlite3.connect(main_db_filename)
+        with open('main.sql') as f:
+            conn.executescript(f.read())
     return """
         ATTACH DATABASE 'dictionaries/sqlite/{to_lang}.sqlite3' AS other;
         ATTACH DATABASE 'dictionaries/sqlite/{from_lang}-{to_lang}.sqlite3' AS lang_pair;
