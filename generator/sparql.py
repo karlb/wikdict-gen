@@ -167,8 +167,10 @@ def make_url(query, **fmt_args):
 
 
 def normalize_sense_num(c):
+    if c == '':
+        return 999
     match = sense_num_re.match(c)
-    assert match
+    assert match, 'Sense re does not match for %r' % c
     normalized_sense_num = '{:02d}'.format(int(match.group(1)))
     if match.group(2):
         normalized_sense_num += match.group(2)
