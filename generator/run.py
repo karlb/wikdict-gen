@@ -28,8 +28,7 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
         % (from_lang, to_lang))
     for r in conn.execute("""
                 SELECT * FROM (
-                    SELECT lexentry, display, display_addition, sense_list,
-                           trans_list
+                    SELECT lexentry, written_rep, sense_list, trans_list
                     FROM (
                             SELECT DISTINCT lexentry
                             FROM search_trans
@@ -39,11 +38,11 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
                     ORDER BY translation.rowid
                 )
                 UNION ALL
-                SELECT NULL, written_rep, NULL, NULL, trans_list
+                SELECT NULL, written_rep, NULL, trans_list
                 FROM search_reverse_trans
                 WHERE written_rep MATCH ?
             """, [search_term, search_term]):
-        print '%-40s %-20s %-20s %-80s %s' % r
+        print '%-40s %-20s %-80s %s' % r
 
 
 def make_prod_single(lang, **kwargs):
