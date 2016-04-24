@@ -8,11 +8,16 @@ import re
 import urllib
 import json
 from itertools import permutations, groupby
+from collections import defaultdict
 
 import sparql
 from parse import html_parser
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
+
+TOKENIZER = defaultdict(lambda: 'unicode61', {
+    'en': 'porter'
+})
 
 
 def apply_views(conn, view_file='views.sql'):
@@ -128,7 +133,7 @@ def interactive(from_lang, to_lang, **kwargs):
     with open('/tmp/attach_dbs.sql', 'w') as f:
         f.write(attach_dbs(from_lang, to_lang))
         f.write('\n.read ' + BASE_PATH + '/views.sql\n')
-        f.write('.headers on\n.mode column\n.load download-sqlite/lib/spellfix1')
+        f.write('.headers on\n.mode column\n.load lib/spellfix1')
     subprocess.check_call(
         #'sqlite3 '
         '/usr/local/Cellar/sqlite/3.8.10.2/bin/sqlite3 '
@@ -185,7 +190,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
         -- search table
         DROP TABLE IF EXISTS prod.search_trans;
         CREATE VIRTUAL TABLE prod.search_trans USING fts4(
-            form, lexentry, tokenize=unicode61, notindexed=lexentry
+            form, lexentry, tokenize={}, notindexed=lexentry
         );
 
         -- insert data
@@ -198,18 +203,18 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
         WHERE lexentry IN (
             SELECT lexentry FROM prod.translation
         );
-    """)
+    """.format(TOKENIZER[from_lang]))
 
     print 'Prepare search index (reversed translation)'
     conn.executescript("""
         DROP TABLE IF EXISTS prod.search_reverse_trans;
         CREATE VIRTUAL TABLE prod.search_reverse_trans USING fts4(
-            written_rep, trans_list, tokenize=unicode61, notindexed=trans_list
+            written_rep, trans_list, tokenize={}, notindexed=trans_list
         );
         INSERT INTO prod.search_reverse_trans
         SELECT written_rep, trans_list
         FROM grouped_reverse_trans
-    """)
+    """.format(TOKENIZER[from_lang]))
 
     conn.execute("""
         DELETE FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
