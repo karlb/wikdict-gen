@@ -46,7 +46,9 @@ form_query = """
 
 
 entry_query = """
-    SELECT ?lexentry ?written_rep ?part_of_speech ?gender ?pronun_list
+    SELECT ?lexentry ?written_rep ?part_of_speech
+           coalesce(?gender1, ?gender2) AS ?gender
+           ?pronun_list
     WHERE {
         ?lexform lemon:writtenRep ?written_rep .
         ?lexentry lemon:canonicalForm ?lexform ;
@@ -59,7 +61,8 @@ entry_query = """
         # See https://github.com/openlink/virtuoso-opensource/issues/575
         #OPTIONAL { ?lexentry lexinfo:partOfSpeech ?part_of_speech }
 
-        OPTIONAL { ?lexform lexinfo:gender ?gender }
+        OPTIONAL { ?lexform lexinfo:gender ?gender1 }
+        OPTIONAL { ?lexentry lexinfo:gender ?gender2 }
         OPTIONAL {
             SELECT ?lexform, group_concat(?pronun, ' | ') AS ?pronun_list
             WHERE {
