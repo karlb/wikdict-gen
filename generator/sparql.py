@@ -52,7 +52,13 @@ entry_query = """
         ?lexentry lemon:canonicalForm ?lexform ;
                   dcterms:language lexvo:%(lang3)s .
 
-        OPTIONAL { ?lexentry lexinfo:partOfSpeech ?part_of_speech }
+        ?lexentry lexinfo:partOfSpeech ?part_of_speech
+        # I used optional earlier, am now missing some entries, but
+        # virtuoso does not return proper ?part_of_speech results in
+        # version 07.20.3217, otherwise. At least on my system.
+        # See https://github.com/openlink/virtuoso-opensource/issues/575
+        #OPTIONAL { ?lexentry lexinfo:partOfSpeech ?part_of_speech }
+
         OPTIONAL { ?lexform lexinfo:gender ?gender }
         OPTIONAL {
             SELECT ?lexform, group_concat(?pronun, ' | ') AS ?pronun_list
