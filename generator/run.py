@@ -11,7 +11,7 @@ from itertools import permutations, groupby
 from collections import defaultdict
 
 import sparql
-from parse import html_parser
+from parse import html_parser, clean_wiki_syntax
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -20,8 +20,20 @@ TOKENIZER = defaultdict(lambda: 'unicode61', {
 })
 
 
+def remove_formatting(x):
+    try:
+        if x is None:
+            return None
+        x = html_parser.parse(x)
+        x = clean_wiki_syntax(x)
+        return x
+    except Exception as e:
+        print e
+        raise
+
+
 def apply_views(conn, view_file='views.sql'):
-    conn.create_function('parse_html', 1, html_parser.parse)
+    conn.create_function('remove_formatting', 1, remove_formatting)
     with open(BASE_PATH + '/' + view_file) as f:
         f.readline()  # skip first line
         conn.executescript(f.read())

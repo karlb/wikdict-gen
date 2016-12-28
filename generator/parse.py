@@ -1,3 +1,5 @@
+import re
+
 from HTMLParser import HTMLParser
 from htmlentitydefs import name2codepoint
 
@@ -86,3 +88,11 @@ class MyHTMLParser(HTMLParser):
         return self.output
 
 html_parser = MyHTMLParser()
+
+
+bold_and_italics = re.compile(r"'{2,3}")
+
+
+def clean_wiki_syntax(x):
+    return bold_and_italics.sub('', x)
+
