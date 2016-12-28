@@ -1,13 +1,9 @@
 #!/usr/bin/env python2
 import sys
-import glob
-import codecs
-import subprocess
-import datetime
-import json
 import sqlite3
+import datetime
 import codecs
-from itertools import groupby
+from itertools import groupby, permutations
 from xml.etree.cElementTree import (
     Element, SubElement, tostring, XML, register_namespace)
 
@@ -102,7 +98,7 @@ def get_translations(from_lang, to_lang):
         yield entry
 
 
-def single_tei_entry(conn, x):
+def single_tei_entry(x, to_lang):
     # entry
     entry = Element('entry')
     form = SubElement(entry, 'form')
@@ -168,7 +164,7 @@ def get_tei_entries_as_xml(from_lang, to_lang):
     entries_xml_text_list = []
     headwords = 0
     for x in get_translations(from_lang, to_lang):
-        entry = single_tei_entry(conn, x)
+        entry = single_tei_entry(x, to_lang)
 
         indent(entry, level=2)
         entries_xml_text_list.append(
@@ -210,8 +206,8 @@ def write_tei_dict(from_lang, to_lang):
                     <publicationStmt>
                         <publisher>Karl Bartel</publisher>
                         <availability status="free">
-                            <p>Licensed under the Creative Commons Attribution-ShareAlike License</p>
-                            <p>See http://creativecommons.org/licenses/by-sa/3.0/ for details</p>
+                            <p>Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported license</p>
+                            <p>See https://creativecommons.org/licenses/by-sa/3.0/legalcode for details</p>
                         </availability>
                         <date>{today}</date>
                     </publicationStmt>
@@ -283,20 +279,24 @@ def write_dict_pair(from_lang, to_lang):
     write_tei_dict(to_lang, from_lang)
 
 
-if len(sys.argv) == 2 and sys.argv[1] == 'all':
-    for path in glob.glob('dictionaries/raw2/grouped/*.tsv'):
-        filename = path.split('/')[-1]
-        from_lang, to_lang = filename.replace('.tsv', '').split('-')
+def main():
+    if len(sys.argv) == 2 and sys.argv[1] == 'all':
+        langs = ('de', 'en', 'sv', 'fr')
+        for from_lang, to_lang in permutations(langs, 2):
+            write_dict_pair(from_lang, to_lang)
+    elif len(sys.argv) == 3:
+        from_lang, to_lang = sys.argv[1:]
+        #import cProfile
+        #cProfile.run('write_dict_pair(from_lang, to_lang)', sort='cumtime')
+        #cProfile.run('get_tei_entries_as_xml("de", "fr")', sort='tottime')
         write_dict_pair(from_lang, to_lang)
-elif len(sys.argv) == 3:
-    from_lang, to_lang = sys.argv[1:]
-    #import cProfile
-    #cProfile.run('write_dict_pair(from_lang, to_lang)', sort='cumtime')
-    #cProfile.run('get_tei_entries_as_xml("de", "fr")', sort='tottime')
-    write_dict_pair(from_lang, to_lang)
-else:
-    print 'Usage: %s [FROM_LANG] [TO_LANG]' % sys.argv[0]
-    print '    or %s all' % sys.argv[0]
+    else:
+        print 'Usage: %s [FROM_LANG] [TO_LANG]' % sys.argv[0]
+        print '    or %s all' % sys.argv[0]
+
+
+if __name__ == '__main__':
+    main()
 
 # validate
 # xmllint --noout --dtdvalid freedict-P5.dtd --relaxng freedict-P5.rng.txt --valid *.tei
