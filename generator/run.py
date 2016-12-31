@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 import sqlite3
 import argparse
 import subprocess
 import codecs
 import re
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import json
 from itertools import permutations, groupby
 from collections import defaultdict
@@ -28,7 +28,7 @@ def remove_formatting(x):
         x = clean_wiki_syntax(x)
         return x
     except Exception as e:
-        print e
+        print(e)
         raise
 
 
@@ -59,7 +59,7 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
                 FROM search_reverse_trans
                 WHERE written_rep MATCH ?
             """, [search_term, search_term]):
-        print '%-40s %-20s %-80s %s' % r
+        print('%-40s %-20s %-80s %s' % r)
 
 
 def make_prod_single(lang, **kwargs):
@@ -104,7 +104,7 @@ def make_prod_single(lang, **kwargs):
             SELECT '' AS lexentry, '' AS display, '' AS display_addition
         """)
 
-    print 'Prepare entry'
+    print('Prepare entry')
     conn.enable_load_extension(True)
     conn.load_extension(BASE_PATH + '/lib/spellfix1')
     conn.executescript("""
@@ -136,7 +136,7 @@ def make_prod_single(lang, **kwargs):
     """)
 
     conn.close()
-    print 'Vacuum'
+    print('Vacuum')
     sqlite3.connect('dictionaries/sqlite/prod/{}.sqlite3'.format(lang)
                     ).execute('VACUUM')
 
@@ -177,7 +177,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
     conn.executescript(attach_dbs(from_lang, to_lang))
     apply_views(conn)
 
-    print 'Prepare translation'
+    print('Prepare translation')
     conn.executescript("""
         -- required to get a rowid
         CREATE TEMPORARY TABLE grouped_translation_table
@@ -197,7 +197,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
         CREATE INDEX prod.translation_written_rep_idx ON translation('written_rep');
     """)
 
-    print 'Prepare search index'
+    print('Prepare search index')
     conn.executescript("""
         -- search table
         DROP TABLE IF EXISTS prod.search_trans;
@@ -217,7 +217,7 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
         );
     """.format(TOKENIZER[from_lang]))
 
-    print 'Prepare search index (reversed translation)'
+    print('Prepare search index (reversed translation)')
     conn.executescript("""
         DROP TABLE IF EXISTS prod.search_reverse_trans;
         CREATE VIRTUAL TABLE prod.search_reverse_trans USING fts4(
@@ -238,16 +238,16 @@ def make_prod_pair(from_lang, to_lang, **kwargs):
             (SELECT count(*) FROM prod.search_reverse_trans),
             (SELECT count(*) FROM form)
     """, [from_lang, to_lang])
-    print conn.execute("""
+    print(conn.execute("""
         SELECT * FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
-    """, [from_lang, to_lang]).fetchone()
+    """, [from_lang, to_lang]).fetchone())
     conn.commit()
 
-    print 'Optimize'
+    print('Optimize')
     conn.execute("INSERT INTO prod.search_trans(search_trans) VALUES('optimize');")
     conn.execute("INSERT INTO prod.search_reverse_trans(search_reverse_trans) VALUES('optimize');")
     conn.close()
-    print 'Vacuum'
+    print('Vacuum')
     sqlite3.connect('dictionaries/sqlite/prod/{}-{}.sqlite3'.format(from_lang, to_lang)
                     ).execute('VACUUM')
 
@@ -258,10 +258,10 @@ def make_for_langs(functions, langs, **kwargs):
         `langs` can also be "all" to execute on all supported languages.
     """
     if langs == ['all']:
-        langs = sparql.translation_query_type.keys()
+        langs = list(sparql.translation_query_type.keys())
     for lang in langs:
         for func in functions:
-            print lang, func.__name__
+            print(lang, func.__name__)
             func(lang)
 
 
@@ -271,13 +271,13 @@ def make_for_lang_permutations(functions, langs, **kwargs):
         `langs` can also be "all" to execute on all supported languages.
     """
     if langs == ['all']:
-        langs = sparql.translation_query_type.keys()
+        langs = list(sparql.translation_query_type.keys())
     assert len(langs) >= 2, 'Need at least two languages'
 
     for func in functions:
-        print '>> ' + func.__name__
+        print('>> ' + func.__name__)
         for from_lang, to_lang in permutations(langs, 2):
-            print from_lang, to_lang
+            print(from_lang, to_lang)
             func(from_lang, to_lang)
 
 
@@ -351,7 +351,7 @@ def make_typeahead_single(lang):
         pass
 
     def save_typeahead(filename, prefix_rows):
-        encoded_prefix = urllib.quote_plus(filename)
+        encoded_prefix = urllib.parse.quote_plus(filename)
         filename = path + '/' + encoded_prefix + '.json'
         with codecs.open(filename, 'w', 'utf8') as f:
             words = [r[1:] for r in prefix_rows]
@@ -373,9 +373,9 @@ def make_typeahead_single(lang):
 
 def make_typeahead(langs, **kwargs):
     if langs == ['all']:
-        langs = sparql.translation_query_type.keys()
+        langs = list(sparql.translation_query_type.keys())
     for lang in langs:
-        print 'Lang:', lang
+        print('Lang:', lang)
         make_typeahead_single(lang)
 
 

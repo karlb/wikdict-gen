@@ -1,30 +1,30 @@
 import re
 
-from HTMLParser import HTMLParser
-from htmlentitydefs import name2codepoint
+from html.parser import HTMLParser
+from html.entities import name2codepoint
 
 superscript = {
-    '1': u"\u00B9",
-    '2': u"\u00B2",
-    '3': u"\u00B3",
-    '4': u"\u2074",
-    '5': u"\u2075",
-    '6': u"\u2076",
-    '7': u"\u2077",
-    '8': u"\u2078",
-    '9': u"\u2079",
+    '1': "\u00B9",
+    '2': "\u00B2",
+    '3': "\u00B3",
+    '4': "\u2074",
+    '5': "\u2075",
+    '6': "\u2076",
+    '7': "\u2077",
+    '8': "\u2078",
+    '9': "\u2079",
 }
 
 subscript = {
-    '1': u"\u2081",
-    '2': u"\u2082",
-    '3': u"\u2083",
-    '4': u"\u2084",
-    '5': u"\u2085",
-    '6': u"\u2086",
-    '7': u"\u2087",
-    '8': u"\u2088",
-    '9': u"\u2089",
+    '1': "\u2081",
+    '2': "\u2082",
+    '3': "\u2083",
+    '4': "\u2084",
+    '5': "\u2085",
+    '6': "\u2086",
+    '7': "\u2087",
+    '8': "\u2088",
+    '9': "\u2089",
 }
 
 ignore_tag_content = ['ref']
@@ -33,7 +33,7 @@ ignore_tag_content = ['ref']
 class MyHTMLParser(HTMLParser):
     def _flush_tag(self):
         self.output += self.tag_data
-        self.tag_data = u''
+        self.tag_data = ''
 
     def handle_starttag(self, tag, attrs):
         self._flush_tag()
@@ -48,7 +48,7 @@ class MyHTMLParser(HTMLParser):
         elif tag == 'sub':
             self.tag_data = subscript.get(self.tag_data, self.tag_data)
         elif tag in ignore_tag_content:
-            self.tag_data = u''
+            self.tag_data = ''
 
         self._flush_tag()
 
@@ -70,7 +70,7 @@ class MyHTMLParser(HTMLParser):
 
     def handle_entityref(self, name):
         try:
-            c = unichr(name2codepoint[name])
+            c = chr(name2codepoint[name])
         except KeyError:
             c = name
         self.tag_data += c
@@ -78,7 +78,7 @@ class MyHTMLParser(HTMLParser):
     def parse(self, html):
         if html is None:
             return None
-        self.output = u''
+        self.output = ''
         self.tag_stack = []
         self.tag_data = ''
 

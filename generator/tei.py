@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import sys
 import sqlite3
 import datetime
@@ -172,7 +172,7 @@ def get_tei_entries_as_xml(from_lang, to_lang):
         )
         headwords += 1
         if headwords % 2000 == 0:
-            print '.'
+            print('.')
         #if headwords == 5000:
         #    break
 
@@ -181,16 +181,16 @@ def get_tei_entries_as_xml(from_lang, to_lang):
 
 
 def write_tei_dict(from_lang, to_lang):
-    print from_lang, to_lang
+    print(from_lang, to_lang)
     out_filename = 'dictionaries/tei/{}-{}.tei'.format(
                         language_codes3[from_lang],
                         language_codes3[to_lang])
     pos_usage = ''.join('<item ana="{1}">{0}</item>'.format(*pos)
-                        for pos in pos_mapping.values())
+                        for pos in list(pos_mapping.values()))
 
     # prepare header
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
-    tei_template_xml = XML(u'''
+    tei_template_xml = XML('''
         <TEI xmlns="http://www.tei-c.org/ns/1.0">
             <teiHeader xml:lang="en">
                 <fileDesc>
@@ -291,8 +291,8 @@ def main():
         #cProfile.run('get_tei_entries_as_xml("de", "fr")', sort='tottime')
         write_dict_pair(from_lang, to_lang)
     else:
-        print 'Usage: %s [FROM_LANG] [TO_LANG]' % sys.argv[0]
-        print '    or %s all' % sys.argv[0]
+        print('Usage: %s [FROM_LANG] [TO_LANG]' % sys.argv[0])
+        print('    or %s all' % sys.argv[0])
 
 
 if __name__ == '__main__':

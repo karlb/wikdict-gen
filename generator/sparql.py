@@ -1,6 +1,6 @@
 import csv
-import urllib2
-from urllib import urlencode
+import urllib.request, urllib.error, urllib.parse
+from urllib.parse import urlencode
 import sqlite3
 import re
 import json
@@ -162,7 +162,7 @@ def make_url(query, **fmt_args):
         OFFSET %%(offset)s
         LIMIT %%(limit)s
     """ % (query)
-    for key, val in fmt_args.items():
+    for key, val in list(fmt_args.items()):
         if key.endswith('lang'):
             fmt_args[key + '3'] = language_codes3[val]
     url = server + '/sparql?' + urlencode({
@@ -191,9 +191,9 @@ def page_through_results(query, limit, **kwargs):
     while True:
         url = make_url(query, limit=limit, offset=offset, **kwargs)
         try:
-            response = urllib2.urlopen(url)
-        except urllib2.HTTPError as e:
-            print e.read()
+            response = urllib.request.urlopen(url)
+        except urllib.error.HTTPError as e:
+            print(e.read())
             raise
         #raw_json = response.read()
         #with open('debug.json', 'w') as f:
@@ -218,7 +218,7 @@ def page_through_results(query, limit, **kwargs):
             break
         else:
             offset += limit
-            print '.'
+            print('.')
 
 
 def create_table(conn, table_name, first_result=None):
@@ -265,7 +265,7 @@ def get_query(table_name, query, **kwargs):
         kwargs['lang'] = lang
         db_name = '{}-{}'.format(kwargs['from_lang'], kwargs['to_lang'])
 
-    print 'Executing SPARQL query'
+    print('Executing SPARQL query')
     limit = int(5e5)
     batches = page_through_results(query, limit=limit, **kwargs)
     results = chain.from_iterable(batches)
@@ -274,7 +274,7 @@ def get_query(table_name, query, **kwargs):
     try:
         first_result = next(results)
     except StopIteration:
-        print 'No results!'
+        print('No results!')
         create_table(conn, table_name)  # create empty table
         return
 
@@ -287,7 +287,7 @@ def get_query(table_name, query, **kwargs):
         'http://www.w3.org/2001/XMLSchema#integer': int,
         'http://www.w3.org/2001/XMLSchema#decimal': float,
         'http://www.w3.org/2001/XMLSchema#double': float,
-        'http://www.w3.org/2001/XMLSchema#string': unicode,
+        'http://www.w3.org/2001/XMLSchema#string': str,
     }
 
     def postprocess_literal(col_name, value, **kwargs):
@@ -325,13 +325,13 @@ def get_query(table_name, query, **kwargs):
             cell = row[col_name]
             yield postprocess[cell['type']](col_name, **cell)
 
-    print 'Inserting into db'
+    print('Inserting into db')
     cur = conn.cursor()
     cur.executemany("INSERT INTO %s VALUES (%s)" % (
                         table_name, ', '.join(['?'] * len(cols))
                      ),
                      (list(postprocess_row(r)) for r in results))
-    print 'Inserted', cur.rowcount, 'rows'
+    print('Inserted', cur.rowcount, 'rows')
 
     conn.commit()
     conn.close()
