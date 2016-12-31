@@ -291,15 +291,6 @@ def get_query(table_name, query, **kwargs):
     }
 
     def postprocess_literal(col_name, value, **kwargs):
-        # TODO: has this been fixed, so this code can be removed?
-        #
-        # virtuoso does not properly handle unicode, so we have to decode
-        # explicitly, here. See http://stackoverflow.com/a/20422447/114926
-        # This cannot be done on the whole json, because it leads to unescaped
-        # tabs in json strings, which is not valid json.
-        #print repr(value)
-        #value = value.decode("unicode_escape")
-
         if lang == 'fr' and col_name == 'sense':
             # remove sense number references from the end of the gloss
             return fr_sense_re.match(value).group(1)
