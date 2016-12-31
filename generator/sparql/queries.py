@@ -326,9 +326,3 @@ def get_query(table_name, query, **kwargs):
 
     conn.commit()
     conn.close()
-
-
-def get_translation(from_lang, to_lang, **kwargs):
-    query = translation_query[translation_query_type[from_lang]]
-    get_query('translation', query, from_lang=from_lang, to_lang=to_lang)
-
