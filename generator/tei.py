@@ -50,6 +50,69 @@ gender_mapping = {
 }
 
 
+tei_template = """
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader xml:lang="en">
+    <fileDesc>
+      <titleStmt>
+        <title>{from_name}-{to_name} FreeDict+WikDict dictionary</title>
+        <respStmt>
+          <resp>Maintainer</resp>
+          <name>Karl Bartel</name>
+        </respStmt>
+      </titleStmt>
+      <editionStmt><edition>{today}</edition></editionStmt>
+      <extent>{headwords} headwords</extent>
+      <publicationStmt>
+        <publisher>Karl Bartel</publisher>
+        <availability status="free">
+          <p>Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported license</p>
+          <p>See https://creativecommons.org/licenses/by-sa/3.0/legalcode for details</p>
+        </availability>
+        <date>{today}</date>
+      </publicationStmt>
+      <sourceDesc>
+        <p>All entries from Wiktionary.org via DBnary</p>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <projectDesc>
+        <p>
+          This dictionary comes to you through nice people
+          making it available for free and for good. It is part of
+          the FreeDict project, http://www.freedict.org/. This
+          project aims to make available many translating
+          dictionaries for free. Your contributions are welcome!
+        </p>
+      </projectDesc>
+      <tagsDecl>
+        <!-- for each gi, its values are listed, with a pointer to the ontology interface -->
+        <namespace name="http://www.tei-c.org/ns/1.0" xml:base="../shared/">
+          <tagUsage gi="pos">
+            <list n="values" type="bulleted">
+              {pos_usage}
+            </list>
+          </tagUsage>
+          <tagUsage gi="gen">
+            <list>
+              <item ana="FreeDict_ontology.xml#f_gen_fem">fem</item>
+              <item ana="FreeDict_ontology.xml#f_gen_masc">masc</item>
+              <item ana="FreeDict_ontology.xml#f_gen_neut">neut</item>
+            </list>
+          </tagUsage>
+        </namespace>
+      </tagsDecl>
+    </encodingDesc>
+  </teiHeader>
+  <text>
+    <body xml:lang="{from_lang}">
+      {{entries}}
+    </body>
+  </text>
+</TEI>
+"""
+
+
 def list_split(l):
     if l is None:
         return []
@@ -157,6 +220,10 @@ def single_tei_entry(x, to_lang):
 
 
 def get_tei_entries_as_xml(from_lang, to_lang):
+    """ Get all entries as xml string
+
+    Keeping them as XML objects would use much more memory
+    """
     conn = sqlite3.connect(
         'dictionaries/sqlite/prod/%s.sqlite3'
         % from_lang)
@@ -188,90 +255,34 @@ def write_tei_dict(from_lang, to_lang):
     pos_usage = ''.join('<item ana="{1}">{0}</item>'.format(*pos)
                         for pos in list(pos_mapping.values()))
 
-    # prepare header
-    register_namespace('', 'http://www.tei-c.org/ns/1.0')
-    tei_template_xml = XML('''
-        <TEI xmlns="http://www.tei-c.org/ns/1.0">
-            <teiHeader xml:lang="en">
-                <fileDesc>
-                    <titleStmt>
-                        <title>{from_name}-{to_name} FreeDict+WikDict dictionary</title>
-                        <respStmt>
-                            <resp>Maintainer</resp>
-                            <name>Karl Bartel</name>
-                        </respStmt>
-                    </titleStmt>
-                    <editionStmt><edition>{today}</edition></editionStmt>
-                    <extent>{headwords} headwords</extent>
-                    <publicationStmt>
-                        <publisher>Karl Bartel</publisher>
-                        <availability status="free">
-                            <p>Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported license</p>
-                            <p>See https://creativecommons.org/licenses/by-sa/3.0/legalcode for details</p>
-                        </availability>
-                        <date>{today}</date>
-                    </publicationStmt>
-                    <sourceDesc>
-                        <p>All entries from Wiktionary.org via DBnary</p>
-                    </sourceDesc>
-                </fileDesc>
-                <encodingDesc>
-                    <projectDesc>
-                        <p>
-                            This dictionary comes to you through nice people
-                            making it available for free and for good. It is part of
-                            the FreeDict project, http://www.freedict.org/. This
-                            project aims to make available many translating
-                            dictionaries for free. Your contributions are welcome!
-                        </p>
-                    </projectDesc>
-                    <tagsDecl>
-                        <!-- for each gi, its values are listed, with a pointer to the ontology interface -->
-                        <namespace name="http://www.tei-c.org/ns/1.0" xml:base="../shared/">
-                            <tagUsage gi="pos">
-                                <list n="values" type="bulleted">
-                                    {pos_usage}
-                                </list>
-                            </tagUsage>
-                            <tagUsage gi="gen">
-                                <list>
-                                    <item ana="FreeDict_ontology.xml#f_gen_fem">fem</item>
-                                    <item ana="FreeDict_ontology.xml#f_gen_masc">masc</item>
-                                    <item ana="FreeDict_ontology.xml#f_gen_neut">neut</item>
-                                </list>
-                            </tagUsage>
-                        </namespace>
-                    </tagsDecl>
-                </encodingDesc>
-            </teiHeader>
-            <text>
-                <body xml:lang="{from_lang}">
-                    {entries}
-                </body>
-            </text>
-        </TEI>
-    ''')
-
+    # get entries, this is where most work is done
     entries, headwords = get_tei_entries_as_xml(from_lang, to_lang)
 
-    indent(tei_template_xml)
-    tei_template = tostring(tei_template_xml, 'utf-8').decode('utf-8')
-    tei = tei_template.format(
+    # prepare template
+    register_namespace('', 'http://www.tei-c.org/ns/1.0')
+    tei_template_xml = XML(tei_template.format(
             from_name=language_names[from_lang],
             to_name=language_names[to_lang], headwords=headwords,
             from_lang=from_lang,
             today=datetime.date.today(), pos_usage=pos_usage,
-            entries=entries,
-        )
+    ))
+    indent(tei_template_xml)
 
+    # render xml and add entries
+    rendered_template = tostring(tei_template_xml, 'utf-8').decode('utf-8')
+    complete_tei = rendered_template.format(
+        entries=entries,
+    )
+
+    # write to file and add declarations
     with codecs.open(out_filename, 'w', 'utf-8') as out_file:
         out_file.write("""
-            <?xml version="1.0" encoding="UTF-8"?>
-            <?xml-stylesheet type="text/css" href="freedict-dictionary.css"?>
-            <?oxygen RNGSchema="freedict-P5.rng" type="xml"?>
-            <!DOCTYPE TEI SYSTEM "freedict-P5.dtd">
-        """.strip())
-        out_file.write(tei)
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/css" href="freedict-dictionary.css"?>
+<?oxygen RNGSchema="freedict-P5.rng" type="xml"?>
+<!DOCTYPE TEI SYSTEM "freedict-P5.dtd">
+        """.strip() + '\n')
+        out_file.write(complete_tei)
 
 
 def write_dict_pair(from_lang, to_lang):
