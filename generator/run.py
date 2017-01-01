@@ -303,6 +303,8 @@ if __name__ == '__main__':
 
     import sparql.run as sparql_run
     sparql_run.add_subparsers(subparsers)
+    import process
+    process.add_subparsers(subparsers)
 
     search = subparsers.add_parser('search')
     search.add_argument('from_lang')
