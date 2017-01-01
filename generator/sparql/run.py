@@ -7,10 +7,6 @@ from . import queries as sparql
 from helper import make_for_langs
 
 
-def make_form(lang, **kwargs):
-    sparql.get_query('form', sparql.form_query, lang=lang)
-
-
 class PartOfSpeechChooser:
 
     def __init__(self):
@@ -50,32 +46,40 @@ def make_entry(lang, **kwargs):
 
 
 def make_translation(from_lang, to_lang, **kwargs):
-    query = sparql.translation_query[sparql.translation_query_type[from_lang]]
     sparql.get_query('translation', query, from_lang=from_lang, to_lang=to_lang)
 
 
-def make_importance(lang, **kwargs):
-    sparql.get_query('importance', sparql.importance_query, lang=lang)
+def make_raw(lang, only=None, **kwargs):
+    queries = {
+            'form': sparql.form_query,
+            'entry': sparql.entry_query,
+            'importance': sparql.importance_query,
+    }
+    for name, q in queries.items():
+        if not only or only == name:
+            sparql.get_query(name, q, lang=lang)
+
+
+def make_raw_pair(from_lang, to_lang,  only=None, **kwargs):
+    trans_q_type = sparql.translation_query_type[from_lang]
+    queries = {
+            'translation': sparql.translation_query[trans_q_type]
+    }
+    for name, q in queries.items():
+        if not only or only == name:
+            sparql.get_query(name, q, from_lang=from_lang, to_lang=to_lang)
 
 
 def add_subparsers(subparsers):
-    form = subparsers.add_parser(
-        'form', help='lemon:otherForm entries for LexicalEntries')
-    form.add_argument('lang')
-    form.set_defaults(func=make_form)
+    raw = subparsers.add_parser(
+        'raw', help='execute sparql queries and create raw db')
+    raw.add_argument('lang')
+    raw.set_defaults(func=make_raw)
+    raw.add_argument('--only')
 
-    entry = subparsers.add_parser('entry', help='lemon:LexicalEntry entries')
-    entry.add_argument('lang')
-    entry.set_defaults(func=make_entry)
-
-    translation = subparsers.add_parser('translation')
-    translation.add_argument('from_lang')
-    translation.add_argument('to_lang')
-    translation.set_defaults(func=make_translation)
-
-    importance = subparsers.add_parser('importance')
-    importance.add_argument('langs', nargs='+', metavar='lang')
-    importance.set_defaults(
-        func=lambda langs, **kwargs: make_for_langs(
-            [make_importance], langs)
-    )
+    raw_pair = subparsers.add_parser('raw_pair',
+        help='execute sparql queries and create raw db for lang pair')
+    raw_pair.add_argument('from_lang')
+    raw_pair.add_argument('to_lang')
+    raw_pair.set_defaults(func=make_raw_pair)
+    raw_pair.add_argument('--only')

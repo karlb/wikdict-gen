@@ -1,8 +1,8 @@
-import csv
 import urllib.request, urllib.error, urllib.parse
 from urllib.parse import urlencode
 import sqlite3
 import re
+import os
 import json
 from itertools import chain
 
@@ -265,11 +265,13 @@ def get_query(table_name, query, **kwargs):
         kwargs['lang'] = lang
         db_name = '{}-{}'.format(kwargs['from_lang'], kwargs['to_lang'])
 
-    print('Executing SPARQL query')
+    print('Fetch {} (SPARQL)'.format(table_name))
     limit = int(5e5)
     batches = page_through_results(query, limit=limit, **kwargs)
     results = chain.from_iterable(batches)
-    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % db_name)
+    path = 'dictionaries/raw'
+    os.makedirs(path, exist_ok=True)
+    conn = sqlite3.connect('%s/%s.sqlite3' % (path, db_name))
 
     try:
         first_result = next(results)
