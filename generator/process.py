@@ -43,6 +43,15 @@ def make_form(conn, lang):
     """)
 
 
+def make_importance(conn, lang):
+    conn.executescript("""
+        DROP TABLE IF EXISTS main.importance;
+        CREATE TABLE importance AS
+        SELECT *
+        FROM raw.importance
+    """)
+
+
 def make_translation(conn):
     conn.executescript("""
         DROP TABLE IF EXISTS main.translation;
@@ -56,6 +65,7 @@ def make_process(lang, only=None, **kwargs):
     target_tables = {
             'entry': make_entry,
             'form': make_form,
+            'importance': make_importance,
     }
     os.makedirs('dictionaries/processed', exist_ok=True)
     conn = sqlite3.connect('dictionaries/processed/%s.sqlite3' % lang)

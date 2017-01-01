@@ -16,7 +16,7 @@ SELECT *
 FROM reverse_trans
      LEFT JOIN (
         SELECT written_rep, trans
-        FROM translation
+        FROM processed.translation
              JOIN entry USING (lexentry)
      ) orig USING (written_rep, trans)
 WHERE orig.written_rep IS NULL
@@ -44,7 +44,7 @@ GROUP BY 1
 DROP VIEW IF EXISTS merged_translation;
 CREATE TEMP VIEW merged_translation AS
 SELECT DISTINCT lexentry, written_rep, trans, sense, sense_num 
-FROM translation
+FROM processed.translation
      JOIN entry USING (lexentry)
 UNION ALL
 SELECT NULL, written_rep, trans, NULL, NULL
@@ -77,7 +77,7 @@ FROM (
     FROM (
         SELECT lexentry, written_rep,
                remove_formatting(sense) AS sense, sense_num, trans, trans_entity
-        FROM lang_pair.translation
+        FROM processed.translation
              JOIN entry USING (lexentry)
         ORDER BY trans_entity
     )

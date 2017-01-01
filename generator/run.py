@@ -8,35 +8,11 @@ import re
 import urllib.request, urllib.parse, urllib.error
 import json
 from itertools import groupby
-from collections import defaultdict
 
 from parse import html_parser, clean_wiki_syntax
 from helper import make_for_langs, make_for_lang_permutations
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
-
-TOKENIZER = defaultdict(lambda: 'unicode61', {
-    'en': 'porter'
-})
-
-
-def remove_formatting(x):
-    try:
-        if x is None:
-            return None
-        x = html_parser.parse(x)
-        x = clean_wiki_syntax(x)
-        return x
-    except Exception as e:
-        print(e)
-        raise
-
-
-def apply_views(conn, view_file='views.sql'):
-    conn.create_function('remove_formatting', 1, remove_formatting)
-    with open(BASE_PATH + '/' + view_file) as f:
-        f.readline()  # skip first line
-        conn.executescript(f.read())
 
 
 def search_query(from_lang, to_lang, search_term, **kwargs):
@@ -60,85 +36,6 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
                 WHERE written_rep MATCH ?
             """, [search_term, search_term]):
         print('%-40s %-20s %-80s %s' % r)
-
-
-def make_prod_single(lang, **kwargs):
-    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % lang)
-    conn.execute(
-        "ATTACH DATABASE 'dictionaries/sqlite/prod/%s.sqlite3' AS prod"
-        % (lang))
-    apply_views(conn, 'single_views.sql')
-
-    if lang == 'de':
-        conn.executescript("""
-            DROP VIEW IF EXISTS lexentry_display;
-            CREATE VIEW lexentry_display AS
-            WITH noun AS (
-                SELECT lexentry, other_written, number
-                FROM form
-                WHERE pos = 'noun'
-                    AND "case" = 'Nominative'
-                    AND (inflection = 'WeakInflection'
-                         OR inflection IS NULL)
-            )
-            SELECT lexentry, singular AS display,
-                'Pl.: ' || plural AS display_addition
-            FROM (
-                SELECT lexentry, other_written AS singular
-                FROM noun
-                WHERE number = 'Singular'
-                GROUP BY 1
-                HAVING count(DISTINCT other_written) = 1
-            ) JOIN (
-                SELECT lexentry, other_written AS plural
-                FROM noun
-                WHERE number = 'Plural'
-                GROUP BY 1
-                HAVING count(DISTINCT other_written) = 1
-            ) USING (lexentry);
-        """)
-    else:
-        conn.executescript("""
-            DROP VIEW IF EXISTS lexentry_display;
-            CREATE VIEW lexentry_display AS
-            SELECT '' AS lexentry, '' AS display, '' AS display_addition
-        """)
-
-    print('Prepare entry')
-    conn.enable_load_extension(True)
-    conn.load_extension(BASE_PATH + '/lib/spellfix1')
-    conn.executescript("""
-        DROP TABLE IF EXISTS prod.entry;
-        CREATE TABLE prod.entry AS
-        SELECT entry.*, display, display_addition
-        FROM entry
-             LEFT JOIN lexentry_display USING (lexentry)
-        WHERE written_rep IS NOT NULL;
-
-        CREATE INDEX prod.entry_written_rep_idx ON entry(written_rep);
-
-        -- spellfix
-        --DROP TABLE IF EXISTS prod.search_trans_aux;
-        --CREATE VIRTUAL TABLE prod.search_trans_aux USING fts4aux(search_trans);
-        DROP TABLE IF EXISTS prod.spellfix_entry;
-        CREATE VIRTUAL TABLE prod.spellfix_entry USING spellfix1;
-        INSERT INTO prod.spellfix_entry(word, rank)
-        --SELECT term FROM prod.search_trans_aux WHERE col='*';
-        SELECT DISTINCT
-            written_rep,
-            score * score * score AS rank  -- incease weight of rank over distance
-        FROM prod.entry
-            JOIN (
-                SELECT substr(vocable, 5) AS written_rep,
-                       rel_score * 100 AS score
-                FROM rel_importance
-            ) USING (written_rep)
-    """)
-
-    conn.close()
-    print('Vacuum')
-    sqlite3.connect('dictionaries/sqlite/prod/{}.sqlite3'.format(lang)
-                    ).execute('VACUUM')
 
 
 def interactive(from_lang, to_lang, **kwargs):
@@ -170,86 +67,6 @@ def attach_dbs(from_lang, to_lang):
         ATTACH DATABASE 'dictionaries/sqlite/prod/{from_lang}.sqlite3' AS prod_lang;
         ATTACH DATABASE 'dictionaries/sqlite/prod/{to_lang}.sqlite3' AS prod_other;
     """.format(from_lang=from_lang, to_lang=to_lang)
-
-
-def make_prod_pair(from_lang, to_lang, **kwargs):
-    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % from_lang)
-    conn.executescript(attach_dbs(from_lang, to_lang))
-    apply_views(conn)
-
-    print('Prepare translation')
-    conn.executescript("""
-        -- required to get a rowid
-        CREATE TEMPORARY TABLE grouped_translation_table
-        AS SELECT * FROM grouped_translation;
-
-        DROP TABLE IF EXISTS prod.translation;
-        CREATE TABLE prod.translation AS
-        SELECT lexentry, written_rep, part_of_speech, sense_list,
-               min_sense_num, trans_list
-        FROM grouped_translation_table
-            JOIN (
-                SELECT lexentry, part_of_speech
-                FROM entry
-            ) USING (lexentry)
-        ORDER BY grouped_translation_table.rowid;
-        CREATE INDEX prod.translation_lexentry_idx ON translation('lexentry');
-        CREATE INDEX prod.translation_written_rep_idx ON translation('written_rep');
-    """)
-
-    print('Prepare search index')
-    conn.executescript("""
-        -- search table
-        DROP TABLE IF EXISTS prod.search_trans;
-        CREATE VIRTUAL TABLE prod.search_trans USING fts4(
-            form, lexentry, tokenize={}, notindexed=lexentry
-        );
-
-        -- insert data
-        INSERT INTO prod.search_trans
-        SELECT written_rep, lexentry
-        FROM prod.translation
-        UNION
-        SELECT other_written, lexentry
-        FROM form
-        WHERE lexentry IN (
-            SELECT lexentry FROM prod.translation
-        );
-    """.format(TOKENIZER[from_lang]))
-
-    print('Prepare search index (reversed translation)')
-    conn.executescript("""
-        DROP TABLE IF EXISTS prod.search_reverse_trans;
-        CREATE VIRTUAL TABLE prod.search_reverse_trans USING fts4(
-            written_rep, trans_list, tokenize={}, notindexed=trans_list
-        );
-        INSERT INTO prod.search_reverse_trans
-        SELECT written_rep, trans_list
-        FROM grouped_reverse_trans
-    """.format(TOKENIZER[from_lang]))
-
-    conn.execute("""
-        DELETE FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
-    """, [from_lang, to_lang])
-    conn.execute("""
-        INSERT INTO wikdict.lang_pair
-        SELECT ?, ?,
-            (SELECT count(*) FROM prod.translation),
-            (SELECT count(*) FROM prod.search_reverse_trans),
-            (SELECT count(*) FROM form)
-    """, [from_lang, to_lang])
-    print(conn.execute("""
-        SELECT * FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
-    """, [from_lang, to_lang]).fetchone())
-    conn.commit()
-
-    print('Optimize')
-    conn.execute("INSERT INTO prod.search_trans(search_trans) VALUES('optimize');")
-    conn.execute("INSERT INTO prod.search_reverse_trans(search_reverse_trans) VALUES('optimize');")
-    conn.close()
-    print('Vacuum')
-    sqlite3.connect('dictionaries/sqlite/prod/{}-{}.sqlite3'.format(from_lang, to_lang)
-                    ).execute('VACUUM')
 
 
 def make_typeahead_single(lang):
@@ -305,26 +122,14 @@ if __name__ == '__main__':
     sparql_run.add_subparsers(subparsers)
     import process
     process.add_subparsers(subparsers)
+    import wdweb
+    wdweb.add_subparsers(subparsers)
 
     search = subparsers.add_parser('search')
     search.add_argument('from_lang')
     search.add_argument('to_lang')
     search.add_argument('search_term')
     search.set_defaults(func=search_query)
-
-    prod_pair = subparsers.add_parser('prod_pair')
-    prod_pair.add_argument('langs', nargs='+', metavar='lang')
-    prod_pair.set_defaults(
-        func=lambda langs, **kwargs: make_for_lang_permutations(
-            [make_prod_pair], langs)
-    )
-
-    prod_single = subparsers.add_parser('prod')
-    prod_single.add_argument('lang', nargs='+')
-    prod_single.set_defaults(
-        func=lambda lang, **kwargs: make_for_langs(
-            [make_prod_single], lang)
-    )
 
     complete_lang = subparsers.add_parser('complete_lang')
     complete_lang.add_argument('langs', nargs='+', metavar='lang')
