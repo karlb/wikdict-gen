@@ -1,6 +1,6 @@
-import os
-import sqlite3
 from collections import defaultdict
+
+from helper import make_targets
 
 
 TOKENIZER = defaultdict(lambda: 'unicode61', {
@@ -179,56 +179,36 @@ def update_stats(conn, lang_pair):
     """, [from_lang, to_lang])
 
 
-def do_steps(lang, in_path, out_path, targets, only, attach=[]):
-    os.makedirs(out_path, exist_ok=True)
-    conn = sqlite3.connect('%s/%s.sqlite3' % (out_path, lang))
-    conn.execute(
-        "ATTACH DATABASE '%s/%s.sqlite3' AS processed" % (in_path, lang))
-    for a in attach:
-        conn.execute(
-            "ATTACH DATABASE " + a)
-    conn.enable_load_extension(True)
-    print('processing %s:' % lang, flush=True, end=' ')
-    for name, f in targets:
-        if not only or only == name:
-            print(name, flush=True, end=' ')
-            f(conn, lang)
-    conn.commit()
-    print()
-
-
-def make_single(lang, only=None, **kwargs):
-    do_steps(
-        lang,
-        in_path='dictionaries/processed',
-        out_path='dictionaries/wdweb',
-        targets=[
+def do(lang, only, **kwargs):
+    if '-' not in lang:
+        attach = []
+        targets = [
             ('display', make_display),
             ('entry', make_entry),
             ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
-        ],
-        only=only,
-    )
-
-
-def make_pair(from_lang, to_lang, only=None, **kwargs):
-    do_steps(
-        from_lang + '-' + to_lang,
-        in_path='dictionaries/processed',
-        out_path='dictionaries/wdweb',
-        attach=[
+        ]
+    else:
+        (from_lang, to_lang) = lang.split('-')
+        attach = [
             "'dictionaries/processed/%s-%s.sqlite3' AS other_pair"
                 % (to_lang, from_lang),
             "'dictionaries/processed/%s.sqlite3' AS other"
                 % (to_lang),
             "'dictionaries/wdweb/wikdict.sqlite3' AS wikdict",
-        ],
-        targets=[
+        ]
+        targets = [
             ('translation', make_translation),
             ('search_index', make_search_index),
             ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
             ('stats', update_stats),
-        ],
+        ]
+
+    make_targets(
+        lang,
+        in_path='processed',
+        out_path='wdweb',
+        attach=attach,
+        targets=targets,
         only=only,
     )
 
@@ -237,12 +217,5 @@ def add_subparsers(subparsers):
     process = subparsers.add_parser(
         'wdweb', help='generate lang db for wikdict-web')
     process.add_argument('lang')
-    process.set_defaults(func=make_single)
+    process.set_defaults(func=do)
     process.add_argument('--only')
-
-    process_pair = subparsers.add_parser('wdweb_pair',
-        help='generate lang pair db for wikdict-web')
-    process_pair.add_argument('from_lang')
-    process_pair.add_argument('to_lang')
-    process_pair.set_defaults(func=make_pair)
-    process_pair.add_argument('--only')

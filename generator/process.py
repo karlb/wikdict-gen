@@ -1,5 +1,4 @@
-import os
-import sqlite3
+from helper import make_targets
 
 
 class PartOfSpeechChooser:
@@ -52,7 +51,7 @@ def make_importance(conn, lang):
     """)
 
 
-def make_translation(conn):
+def make_translation(conn, lang):
     conn.executescript("""
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE translation AS
@@ -61,52 +60,30 @@ def make_translation(conn):
     """)
 
 
-def make_process(lang, only=None, **kwargs):
-    target_tables = {
-            'entry': make_entry,
-            'form': make_form,
-            'importance': make_importance,
-    }
-    os.makedirs('dictionaries/processed', exist_ok=True)
-    conn = sqlite3.connect('dictionaries/processed/%s.sqlite3' % lang)
-    conn.execute(
-        "ATTACH DATABASE 'dictionaries/raw/%s.sqlite3' AS raw" % lang)
-    print('processing %s:' % lang, flush=True, end=' ')
-    for name, f in target_tables.items():
-        if not only or only == name:
-            print(name, flush=True, end=' ')
-            f(conn, lang=lang)
-    conn.commit()
-    print()
+def do(lang, only, **kwargs):
+    if '-' not in lang:
+        targets = [
+            ('entry', make_entry),
+            ('form', make_form),
+            ('importance', make_importance),
+        ]
+    else:
+        targets = [
+            ('translation', make_translation),
+        ]
 
-
-def make_process_pair(from_lang, to_lang, only=None, **kwargs):
-    target_tables = {
-            'translation': make_translation,
-    }
-    os.makedirs('dictionaries/processed', exist_ok=True)
-    conn = sqlite3.connect('dictionaries/processed/%s-%s.sqlite3' % (from_lang, to_lang))
-    conn.execute(
-        "ATTACH DATABASE 'dictionaries/raw/%s-%s.sqlite3' AS raw" % (from_lang, to_lang))
-    print('processing %s-%s:' % (from_lang, to_lang), flush=True, end=' ')
-    for name, f in target_tables.items():
-        if not only or only == name:
-            print(name, flush=True, end=' ')
-            f(conn)
-    conn.commit()
-    print()
+    make_targets(
+        lang,
+        in_path='raw',
+        out_path='processed',
+        targets=targets,
+        only=only,
+    )
 
 
 def add_subparsers(subparsers):
     process = subparsers.add_parser(
         'process', help='process raw db into a new processed db')
     process.add_argument('lang')
-    process.set_defaults(func=make_process)
+    process.set_defaults(func=do)
     process.add_argument('--only')
-
-    process_pair = subparsers.add_parser('process_pair',
-        help='process raw db into a new processed db for lang pair')
-    process_pair.add_argument('from_lang')
-    process_pair.add_argument('to_lang')
-    process_pair.set_defaults(func=make_process_pair)
-    process_pair.add_argument('--only')
