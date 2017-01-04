@@ -1,4 +1,5 @@
 import os
+import sys
 import sqlite3
 from itertools import permutations
 
@@ -52,3 +53,15 @@ def make_targets(lang, in_path, out_path, targets, only, attach=[]):
             f(conn, lang)
     conn.commit()
     print()
+
+
+if __name__ == '__main__':
+    if sys.argv[1] == 'all_pairs':
+        print(' '.join(
+            from_lang + '-' + to_lang
+            for from_lang, to_lang in permutations(supported_langs, 2)
+        ))
+    elif sys.argv[1] == 'all_langs':
+        print(' '.join(supported_langs))
+    else:
+        print('Unknwn command %s' % sys.argv[1])
