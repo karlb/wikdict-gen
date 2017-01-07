@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from helper import make_targets
+from parse import html_parser, clean_wiki_syntax
 
 
 TOKENIZER = defaultdict(lambda: 'unicode61', {
@@ -192,6 +193,8 @@ def do(lang, only, **kwargs):
         attach = [
             "'dictionaries/processed/%s-%s.sqlite3' AS other_pair"
                 % (to_lang, from_lang),
+            "'dictionaries/processed/%s.sqlite3' AS lang"
+                % (from_lang),
             "'dictionaries/processed/%s.sqlite3' AS other"
                 % (to_lang),
             "'dictionaries/wdweb/wikdict.sqlite3' AS wikdict",

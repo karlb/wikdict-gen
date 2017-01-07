@@ -78,7 +78,7 @@ FROM (
         SELECT lexentry, written_rep,
                remove_formatting(sense) AS sense, sense_num, trans, trans_entity
         FROM processed.translation
-             JOIN entry USING (lexentry)
+             JOIN lang.entry USING (lexentry)
         ORDER BY trans_entity
     )
     GROUP BY lexentry, written_rep, sense, sense_num
