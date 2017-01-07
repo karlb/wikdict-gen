@@ -122,11 +122,11 @@ def list_split(l):
 
 def get_translations(from_lang, to_lang):
     conn = sqlite3.connect(
-        'dictionaries/sqlite/prod/%s-%s.sqlite3'
+        'dictionaries/wdweb/%s-%s.sqlite3'
         % (from_lang, to_lang))
     conn.row_factory = sqlite3.Row
     conn.execute(
-        "ATTACH DATABASE 'dictionaries/sqlite/prod/%s.sqlite3' AS prod_lang"
+        "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang"
         % from_lang)
     translations = conn.execute("""
         SELECT lexentry,
