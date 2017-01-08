@@ -180,7 +180,7 @@ def update_stats(conn, lang_pair):
     """, [from_lang, to_lang])
 
 
-def do(lang, only, **kwargs):
+def do(lang, only, sql, **kwargs):
     if '-' not in lang:
         attach = []
         targets = [
@@ -213,6 +213,7 @@ def do(lang, only, **kwargs):
         attach=attach,
         targets=targets,
         only=only,
+        sql=sql,
     )
 
 
@@ -222,3 +223,4 @@ def add_subparsers(subparsers):
     process.add_argument('lang')
     process.set_defaults(func=do)
     process.add_argument('--only')
+    process.add_argument('--sql')
