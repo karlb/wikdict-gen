@@ -316,7 +316,12 @@ def get_query(table_name, query, **kwargs):
                 yield None
                 continue
             cell = row[col_name]
-            yield postprocess[cell['type']](col_name, **cell)
+            processed = postprocess[cell['type']](col_name, **cell)
+            if isinstance(processed, str):
+                # The input contains some badly encoded characters.
+                # Replace these with ?-Symbols to avoid later errors
+                processed = processed.encode('utf-8', 'replace').decode()
+            yield processed
 
     print('Inserting into db')
     cur = conn.cursor()
