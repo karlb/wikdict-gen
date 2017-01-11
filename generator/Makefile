@@ -39,10 +39,11 @@ ${ALL_GENERIC}: dictionaries/generic/%.sqlite3: dictionaries/processed/%.sqlite3
 
 .SECONDEXPANSION:
 ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
-    dictionaries/processed/%.sqlite3 \
     dictionaries/processed/$$(firstword $$(subst -, ,%)).sqlite3 \
     dictionaries/processed/$$(word 2,$$(subst -, ,%)).sqlite3 \
-    dictionaries/processed/$$(word 2,$$(subst ., ,$$(subst -, ,$$@)))-$$(firstword $$(subst -, ,$$(notdir $$@))).sqlite3
+    dictionaries/generic/%.sqlite3 \
+    dictionaries/infer.sqlite3
+    #dictionaries/generic/$$(word 2,$$(subst ., ,$$(subst -, ,$$@)))-$$(firstword $$(subst -, ,$$(notdir $$@))).sqlite3
 	./run.py wdweb $*
 
 ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlite3

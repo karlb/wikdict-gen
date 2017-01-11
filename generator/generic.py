@@ -7,7 +7,7 @@ sense_num_re = re.compile(r'(\d+)(\w)?')
 
 def parse_sense_num(c):
     if c == '':
-        return 999
+        return None
     match = sense_num_re.match(c)
     assert match, 'Sense re does not match for %r' % c
     normalized_sense_num = '{:02d}'.format(int(match.group(1)))

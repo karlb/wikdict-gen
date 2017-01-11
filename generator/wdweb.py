@@ -35,7 +35,7 @@ def make_entry(conn, lang):
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE main.entry AS
         SELECT entry.*, display, display_addition
-        FROM processed.entry
+        FROM generic.entry
              LEFT JOIN lexentry_display USING (lexentry)
         WHERE written_rep IS NOT NULL;
 
@@ -98,20 +98,16 @@ def make_display(conn, lang):
 def make_translation(conn, lang_pair):
     apply_views(conn)
     conn.executescript("""
-        -- required to get a rowid
-        CREATE TEMPORARY TABLE grouped_translation_table
-        AS SELECT * FROM grouped_translation;
-
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE main.translation AS
         SELECT lexentry, written_rep, part_of_speech, sense_list,
                min_sense_num, trans_list
-        FROM grouped_translation_table
+        FROM translation_grouped 
             JOIN (
                 SELECT lexentry, part_of_speech
                 FROM entry
             ) USING (lexentry)
-        ORDER BY grouped_translation_table.rowid;
+        ORDER BY lexentry, min_sense_num;
         CREATE INDEX main.translation_lexentry_idx ON translation('lexentry');
         CREATE INDEX main.translation_written_rep_idx ON translation('written_rep');
     """)
@@ -140,20 +136,8 @@ def make_search_index(conn, lang_pair):
         );
     """.format(TOKENIZER[from_lang]))
 
-    # reversed search index
-    conn.executescript("""
-        DROP TABLE IF EXISTS main.search_reverse_trans;
-        CREATE VIRTUAL TABLE main.search_reverse_trans USING fts4(
-            written_rep, trans_list, tokenize={}, notindexed=trans_list
-        );
-        INSERT INTO main.search_reverse_trans
-        SELECT written_rep, trans_list
-        FROM grouped_reverse_trans
-    """.format(TOKENIZER[from_lang]))
-
     # optimize
     conn.execute("INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
-    conn.execute("INSERT INTO main.search_reverse_trans(search_reverse_trans) VALUES('optimize');")
 
 
 def update_stats(conn, lang_pair):
@@ -163,7 +147,6 @@ def update_stats(conn, lang_pair):
             from_lang text,
             to_lang text,
             translations int,
-            reverse_translations int,
             forms int,
             PRIMARY KEY (from_lang, to_lang)
         );
@@ -172,10 +155,9 @@ def update_stats(conn, lang_pair):
         DELETE FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
     """, [from_lang, to_lang])
     conn.execute("""
-        INSERT INTO wikdict.lang_pair
+        INSERT INTO wikdict.lang_pair(from_lang, to_lang, translations, forms)
         SELECT ?, ?,
             (SELECT count(*) FROM main.translation),
-            (SELECT count(*) FROM main.search_reverse_trans),
             (SELECT count(*) FROM form)
     """, [from_lang, to_lang])
 
@@ -191,7 +173,7 @@ def do(lang, only, sql, **kwargs):
     else:
         (from_lang, to_lang) = lang.split('-')
         attach = [
-            "'dictionaries/processed/%s-%s.sqlite3' AS other_pair"
+            "'dictionaries/generic/%s-%s.sqlite3' AS other_pair"
                 % (to_lang, from_lang),
             "'dictionaries/processed/%s.sqlite3' AS lang"
                 % (from_lang),
@@ -208,7 +190,7 @@ def do(lang, only, sql, **kwargs):
 
     make_targets(
         lang,
-        in_path='processed',
+        in_path='generic',
         out_path='wdweb',
         attach=attach,
         targets=targets,
