@@ -126,7 +126,7 @@ def list_split(l):
 
 def get_translations(from_lang, to_lang):
     conn = sqlite3.connect(
-        'dictionaries/wdweb/%s-%s.sqlite3'
+        'dictionaries/generic/%s-%s.sqlite3'
         % (from_lang, to_lang))
     conn.row_factory = sqlite3.Row
     conn.execute(
@@ -134,11 +134,11 @@ def get_translations(from_lang, to_lang):
         % from_lang)
     translations = conn.execute("""
         SELECT lexentry,
-            t.written_rep, t.sense_list, t.trans_list, t.part_of_speech,
+            t.written_rep, t.sense_list, t.trans_list,
             e.gender, e.part_of_speech, e.pronun_list
-        FROM translation t
+        FROM translation_grouped t
              JOIN prod_lang.entry e USING (lexentry)
-        ORDER BY t.written_rep, t.part_of_speech, e.gender, e.pronun_list
+        ORDER BY t.written_rep, e.part_of_speech, e.gender, e.pronun_list, t.min_sense_num
         --UNION ALL
         --SELECT NULL, written_rep, NULL, trans_list, NULL
         --FROM search_reverse_trans
@@ -147,12 +147,12 @@ def get_translations(from_lang, to_lang):
     groups = groupby(translations,
                      lambda t: (t['written_rep'], t['part_of_speech'],
                                 t['gender'], t['pronun_list']))
-    for key, tranlations_for_entry in groups:
+    for key, translations_for_entry in groups:
         written_rep, part_of_speech, gender, pronun_list = key
         entry = dict(written_rep=written_rep, part_of_speech=part_of_speech,
                      gender=gender, pronuns=list_split(pronun_list))
         entry['senses'] = []
-        for t in tranlations_for_entry:
+        for t in translations_for_entry:
             sense_list = list_split(t['sense_list'])
             if not sense_list:
                 sense_list = [None]

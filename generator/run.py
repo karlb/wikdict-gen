@@ -9,7 +9,6 @@ import urllib.request, urllib.parse, urllib.error
 import json
 from itertools import groupby
 
-from parse import html_parser, clean_wiki_syntax
 from helper import make_for_langs, make_for_lang_permutations
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -126,6 +125,8 @@ if __name__ == '__main__':
     wdweb.add_subparsers(subparsers)
     import infer
     infer.add_subparsers(subparsers)
+    import generic
+    generic.add_subparsers(subparsers)
 
     search = subparsers.add_parser('search')
     search.add_argument('from_lang')

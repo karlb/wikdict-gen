@@ -9,10 +9,13 @@ ALL_RAW = $(addprefix dictionaries/raw/,$(addsuffix .sqlite3,${ALL_LANGS} ${ALL_
 ALL_PROCESSED = $(addprefix dictionaries/processed/,$(addsuffix .sqlite3,${ALL_LANGS} ${ALL_PAIRS}))
 ALL_WDWEB_PAIRS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LANGS}))
+ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
 all: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
 
 raw: ${ALL_RAW}
+
+generic: ${ALL_GENERIC}
 
 test:
 	python3 -m unittest tests.test_parse tests.test_infer
@@ -20,7 +23,7 @@ test:
 clean:
 	rm dictionaries/*/*
 
-infer: ${ALL_PROCESSED}
+dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 	rm -f dictionaries/infer.sqlite3
 	for langpair in ${ALL_PAIRS}; do ./run.py infer-collect $$langpair; done
 	./run.py infer
@@ -30,6 +33,9 @@ ${ALL_RAW}: dictionaries/raw/%.sqlite3:
 
 ${ALL_PROCESSED}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3
 	./run.py process $*
+
+${ALL_GENERIC}: dictionaries/generic/%.sqlite3: dictionaries/processed/%.sqlite3 dictionaries/infer.sqlite3 
+	./run.py generic $*
 
 .SECONDEXPANSION:
 ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \

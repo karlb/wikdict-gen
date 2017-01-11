@@ -46,7 +46,7 @@ class AggByScore:
             else:
                 break
             min_score += 5
-        return ' || '.join(result)
+        return ' | '.join(result)
 
 
 def infer(**kwargs):

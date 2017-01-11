@@ -37,11 +37,11 @@ def make_for_lang_permutations(functions, langs, **kwargs):
             func(from_lang, to_lang)
 
 
-def make_targets(lang, in_path, out_path, targets, only=None, sql=None, attach=[]):
-    os.makedirs(out_path, exist_ok=True)
+def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None, attach=[]):
     if out_path.endswith('.sqlite3'):
         conn = sqlite3.connect('dictionaries/%s' % out_path)
     else:
+        os.makedirs('dictionaries/' + out_path, exist_ok=True)
         conn = sqlite3.connect('dictionaries/%s/%s.sqlite3' % (out_path, lang))
     conn.execute("ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
             % (in_path, lang, in_path))
