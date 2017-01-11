@@ -6,6 +6,7 @@ import codecs
 from itertools import groupby, permutations
 from xml.etree.cElementTree import (
     Element, SubElement, tostring, XML, register_namespace)
+from collections import OrderedDict
 
 from languages import language_names, language_codes3
 
@@ -26,12 +27,12 @@ def indent(elem, level=0):
             elem.tail = i
 
 
-pos_mapping = {
-    'adjective': ('adj', 'FreeDict_ontology.xml#f_pos_adj'),
-    'adverb': ('adv', 'FreeDict_ontology.xml#f_pos_adv'),
-    'noun': ('n', 'FreeDict_ontology.xml#f_pos_noun'),
-    'properNoun': ('pn', 'FreeDict_ontology.xml#f_pos_noun'),
-    'verb': ('v', 'FreeDict_ontology.xml#f_pos_verb'),
+pos_mapping = OrderedDict([
+    ('adjective', ('adj', 'FreeDict_ontology.xml#f_pos_adj')),
+    ('adverb', ('adv', 'FreeDict_ontology.xml#f_pos_adv')),
+    ('noun', ('n', 'FreeDict_ontology.xml#f_pos_noun')),
+    ('properNoun', ('pn', 'FreeDict_ontology.xml#f_pos_noun')),
+    ('verb', ('v', 'FreeDict_ontology.xml#f_pos_verb')),
     # other pos from ontology which are not used, yet:
     # <item ana="FreeDict_ontology.xml#f_pos_v-intrans">vi</item>
     # <item ana="FreeDict_ontology.xml#f_pos_v-trans">vt</item>
@@ -41,7 +42,7 @@ pos_mapping = {
     # <item ana="FreeDict_ontology.xml#f_pos_pron">pron</item>
     # <item ana="FreeDict_ontology.xml#f_pos_conj">conj</item>
     # <item ana="FreeDict_ontology.xml#f_pos_art">art</item>
-}
+])
 
 gender_mapping = {
     'feminine': 'fem',
@@ -71,6 +72,9 @@ tei_template = """
         </availability>
         <date>{today}</date>
       </publicationStmt>
+      <notesStmt>
+        <note type="status">{status}</note>
+      </notesStmt>
       <sourceDesc>
         <p>All entries from Wiktionary.org via DBnary</p>
       </sourceDesc>
@@ -258,6 +262,13 @@ def write_tei_dict(from_lang, to_lang):
     # get entries, this is where most work is done
     entries, headwords = get_tei_entries_as_xml(from_lang, to_lang)
 
+    if headwords >= 10000:
+        status = 'big enough to be useful'
+    elif headwords < 1000:
+        status = 'too small'
+    else:
+        status = 'unknown'
+
     # prepare template
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
     tei_template_xml = XML(tei_template.format(
@@ -265,6 +276,7 @@ def write_tei_dict(from_lang, to_lang):
             to_name=language_names[to_lang], headwords=headwords,
             from_lang=from_lang,
             today=datetime.date.today(), pos_usage=pos_usage,
+            status=status,
     ))
     indent(tei_template_xml)
 
