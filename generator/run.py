@@ -124,6 +124,8 @@ if __name__ == '__main__':
     process.add_subparsers(subparsers)
     import wdweb
     wdweb.add_subparsers(subparsers)
+    import infer
+    infer.add_subparsers(subparsers)
 
     search = subparsers.add_parser('search')
     search.add_argument('from_lang')

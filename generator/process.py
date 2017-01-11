@@ -60,7 +60,7 @@ def make_translation(conn, lang):
     """)
 
 
-def do(lang, only, **kwargs):
+def do(lang, only, sql, **kwargs):
     if '-' not in lang:
         targets = [
             ('entry', make_entry),
@@ -78,6 +78,7 @@ def do(lang, only, **kwargs):
         out_path='processed',
         targets=targets,
         only=only,
+        sql=sql,
     )
 
 
@@ -87,3 +88,4 @@ def add_subparsers(subparsers):
     process.add_argument('lang')
     process.set_defaults(func=do)
     process.add_argument('--only')
+    process.add_argument('--sql')

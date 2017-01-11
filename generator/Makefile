@@ -1,6 +1,7 @@
 
 .PHONY: test
 .SECONDARY:  # keep intermediate files
+.DELETE_ON_ERROR:
 
 ALL_PAIRS = $(shell python3 helper.py all_pairs)
 ALL_LANGS = $(shell python3 helper.py all_langs)
@@ -9,10 +10,20 @@ ALL_PROCESSED = $(addprefix dictionaries/processed/,$(addsuffix .sqlite3,${ALL_L
 ALL_WDWEB_PAIRS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LANGS}))
 
-all: ${ALL_WDWEB_PAIRS}
+all: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
+
+raw: ${ALL_RAW}
 
 test:
-	python3 -m unittest tests.test_parse
+	python3 -m unittest tests.test_parse tests.test_infer
+
+clean:
+	rm dictionaries/*/*
+
+infer: ${ALL_PROCESSED}
+	rm -f dictionaries/infer.sqlite3
+	for langpair in ${ALL_PAIRS}; do ./run.py infer-collect $$langpair; done
+	./run.py infer
 
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: 
 	./run.py raw $*
@@ -28,6 +39,5 @@ ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
     dictionaries/processed/$$(word 2,$$(subst ., ,$$(subst -, ,$$@)))-$$(firstword $$(subst -, ,$$(notdir $$@))).sqlite3
 	./run.py wdweb $*
 
-.DELETE_ON_ERROR:
 ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlite3
 	./run.py wdweb $*
