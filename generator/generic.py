@@ -5,6 +5,18 @@ from helper import make_targets
 sense_num_re = re.compile(r'(\d+)(\w)?')
 
 
+def log_exceptions(f):
+    def f_with_log(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            print('Error in function "{}":'.format(f.__name__))
+            print(e)
+            raise
+    return f_with_log
+
+
+@log_exceptions
 def parse_sense_num(c):
     if c == '':
         return None
@@ -16,14 +28,26 @@ def parse_sense_num(c):
     return normalized_sense_num
 
 
+@log_exceptions
+def parse_sense(sense):
+    if sense is None:
+        return None
+    sense = sense.strip()
+    if sense == '':
+        return None
+    return sense
+
+
 def translation(conn, lang):
     conn.create_function('parse_sense_num', 1, parse_sense_num)
+    conn.create_function('parse_sense', 1, parse_sense)
     conn.execute("DROP TABLE IF EXISTS main.translation")
     conn.execute("""
         CREATE TABLE translation AS
         WITH lang_trans AS (
             SELECT lexentry, parse_sense_num(sense_num) AS sense_num,
-                sense_num AS orig_sense_num, sense,
+                sense_num AS orig_sense_num,
+                parse_sense(sense) AS sense,
                 from_vocable AS written_rep, trans_list, score
             FROM infer.infer_grouped
             WHERE from_lang = ? AND to_lang = ?
