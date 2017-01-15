@@ -75,7 +75,7 @@ def translation(conn, lang):
             -- force order in group_concat
             SELECT *
             FROM translation
-            ORDER BY lexentry, written_rep, trans_list, sense_num
+            ORDER BY lexentry, written_rep, trans_list, sense_num, score DESC
         )
         GROUP BY lexentry, written_rep, trans_list
     """)

@@ -101,7 +101,8 @@ def make_translation(conn, lang_pair):
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE main.translation AS
         SELECT lexentry, written_rep, part_of_speech, sense_list,
-               min_sense_num, trans_list
+               min_sense_num, trans_list,
+               translation_grouped.score AS translation_score
         FROM translation_grouped 
             JOIN (
                 SELECT lexentry, part_of_speech
