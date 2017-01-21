@@ -45,7 +45,7 @@ class AggByScore:
                 result.append(trans)
             else:
                 break
-            min_score += 5
+            min_score += 20
         return ' | '.join(result)
 
 

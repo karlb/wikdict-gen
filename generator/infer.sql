@@ -33,7 +33,7 @@ SELECT t1.from_lang, t2.to_lang, 'indirect' AS source,
         END || ':' || t1.to_vocable AS source_detail,
     t1.from_vocable, t2.to_vocable,
     t1.lexentry, t1.sense_num, t1.sense,
-    coalesce(round(max(backlink_score * backlink_score) * 5, 1), 1) AS score
+    coalesce(round(max(backlink_score * backlink_score) * 10, 1), 1) AS score
 FROM all_trans t1
     JOIN all_trans t2 ON (
         t1.to_lang = t2.from_lang AND
@@ -61,7 +61,7 @@ SELECT from_lang, to_lang, 'direct' AS source,
     null AS source_detail,
     from_vocable, to_vocable,
     lexentry, sense_num, sense,
-    20 AS score
+    100 AS score
 FROM all_trans;
 
 

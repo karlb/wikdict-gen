@@ -53,7 +53,7 @@ def translation(conn, lang):
                 sense_num AS orig_sense_num,
                 parse_sense(sense) AS sense,
                 from_vocable AS written_rep, trans_list, score,
-                score >= 10 AND lexentry IS NOT NULL AS is_good
+                score >= 20 AND lexentry IS NOT NULL AS is_good
             FROM infer.infer_grouped
             WHERE from_lang = ? AND to_lang = ?
         )
