@@ -102,7 +102,7 @@ def make_translation(conn, lang_pair):
                min_sense_num, trans_list,
                translation_grouped.score AS translation_score
         FROM translation_grouped 
-            JOIN (
+            LEFT JOIN (
                 SELECT lexentry, part_of_speech
                 FROM entry
             ) USING (lexentry)

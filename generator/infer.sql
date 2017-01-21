@@ -37,13 +37,14 @@ SELECT from_lang, to_lang, 'direct' AS source,
 FROM all_trans;
 
 
---DROP VIEW IF EXISTS direct_reverse;
---CREATE VIEW direct_reverse AS
---SELECT to_lang AS from_lang, from_lang AS to_lang, 'direct_reverse' AS source,
-    --null AS source_detail,
-    --to_vocable AS from_vocable, from_vocable AS to_vocable,
-    --null AS sense
---FROM all_trans;
+DROP VIEW IF EXISTS direct_reverse;
+CREATE VIEW direct_reverse AS
+SELECT to_lang AS from_lang, from_lang AS to_lang, 'direct_reverse' AS source,
+    null AS source_detail,
+    to_vocable AS from_vocable, from_vocable AS to_vocable,
+    null AS lexentry, null AS sense_num, null AS sense,
+    2 AS score
+FROM all_trans;
 
 
 DROP VIEW IF EXISTS all_inputs;
@@ -51,6 +52,8 @@ CREATE VIEW all_inputs AS
 SELECT * FROM direct
 UNION ALL
 SELECT * FROM indirect
+UNION ALL
+SELECT * FROM direct_reverse
 ;
 
 

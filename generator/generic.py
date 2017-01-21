@@ -19,7 +19,7 @@ def log_exceptions(f):
 
 @log_exceptions
 def parse_sense_num(c):
-    if c == '':
+    if not c:
         return None
     match = sense_num_re.match(c)
     assert match, 'Sense re does not match for %r' % c
@@ -52,20 +52,21 @@ def translation(conn, lang):
             SELECT lexentry, parse_sense_num(sense_num) AS sense_num,
                 sense_num AS orig_sense_num,
                 parse_sense(sense) AS sense,
-                from_vocable AS written_rep, trans_list, score
+                from_vocable AS written_rep, trans_list, score,
+                score >= 10 AND lexentry IS NOT NULL AS is_good
             FROM infer.infer_grouped
             WHERE from_lang = ? AND to_lang = ?
         )
         SELECT lang_trans.*
         FROM lang_trans
         WHERE (
-            -- Keep if it's good or the only translation
-            score >= 10 OR
-            written_rep IN (
+            -- Keep if it's good or there are no good translations for this
+            -- vocable. This skips bad translations for vocables where there
+            -- is at least one lexentry with a good translation
+            is_good OR written_rep NOT IN (
                 SELECT written_rep
                 FROM lang_trans
-                GROUP BY lexentry
-                HAVING count(*) == 1
+                WHERE is_good
             )
           )
     """, lang.split('-'))
