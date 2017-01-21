@@ -1,24 +1,11 @@
 from collections import defaultdict
 
 from helper import make_targets
-from parse import html_parser, clean_wiki_syntax
 
 
 TOKENIZER = defaultdict(lambda: 'unicode61', {
     'en': 'porter'
 })
-
-
-def remove_formatting(x):
-    try:
-        if x is None:
-            return None
-        x = html_parser.parse(x)
-        x = clean_wiki_syntax(x)
-        return x
-    except Exception as e:
-        print(e)
-        raise
 
 
 def apply_views(conn, view_file='views.sql'):

@@ -1,6 +1,7 @@
 import re
 
 from helper import make_targets
+from parse import html_parser, clean_wiki_syntax
 
 sense_num_re = re.compile(r'(\d+)(\w)?')
 
@@ -35,6 +36,9 @@ def parse_sense(sense):
     sense = sense.strip()
     if sense == '':
         return None
+
+    sense = html_parser.parse(sense)
+    sense = clean_wiki_syntax(sense)
     return sense
 
 
