@@ -11,7 +11,7 @@ def collect(conn, lang):
             to_lang text,
             lexentry text,
             sense_num text,
-            sense text,
+            sense text NOT NULL,
             from_vocable text,
             to_vocable text
         );
@@ -22,7 +22,7 @@ def collect(conn, lang):
     """, [from_lang, to_lang])
     conn.execute("""
         INSERT INTO all_trans
-        SELECT ?, ?, lexentry, sense_num, sense, written_rep, trans
+        SELECT ?, ?, lexentry, sense_num, coalesce(sense, ''), written_rep, trans
         FROM processed.translation
             JOIN lang.entry USING (lexentry)
     """, [from_lang, to_lang])

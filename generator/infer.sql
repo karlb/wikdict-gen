@@ -1,29 +1,57 @@
+DROP VIEW IF EXISTS backlink_full;
+CREATE VIEW backlink_full AS
+SELECT trans.from_lang, trans.to_lang,
+    trans.from_vocable AS from_vocable, trans.to_vocable AS to_vocable,
+    trans.sense AS trans_sense, back.sense AS back_sense,
+    count(CASE WHEN back.to_vocable = trans.from_vocable THEN 1 END) AS good_backlinks,
+    count(back.from_vocable) AS all_backlinks
+FROM all_trans trans
+    JOIN all_trans back ON (
+        trans.from_lang = back.to_lang AND
+        trans.to_lang = back.from_lang AND
+        trans.to_vocable = back.from_vocable
+    )
+GROUP BY trans.from_lang, trans.to_lang, trans.from_vocable, trans.to_vocable,
+    trans.sense, back.sense;
+
+
+DROP TABLE IF EXISTS backlink_score;
+CREATE TABLE backlink_score AS
+SELECT from_lang, to_lang, from_vocable, to_vocable, back_sense,
+    max(cast(good_backlinks AS float) / all_backlinks) AS backlink_score
+FROM backlink_full
+GROUP BY from_lang, to_lang, from_vocable, to_vocable, back_sense;
+
+
 DROP VIEW IF EXISTS indirect;
 CREATE VIEW indirect AS
 SELECT t1.from_lang, t2.to_lang, 'indirect' AS source,
-    group_concat(DISTINCT t1.to_lang ||
-        CASE WHEN backlink.to_lang IS NOT NULL THEN '+' ELSE '' END ||
-        ':' || t1.to_vocable) AS source_detail,
+    t1.to_lang || CASE
+            WHEN backlink_score = 1 THEN '+'
+            WHEN backlink_score < 1 THEN '-'
+            ELSE ''
+        END || ':' || t1.to_vocable AS source_detail,
     t1.from_vocable, t2.to_vocable,
     t1.lexentry, t1.sense_num, t1.sense,
-    count(DISTINCT t1.to_lang) + count(DISTINCT backlink.from_lang) * 4 AS score
+    coalesce(round(max(backlink_score * backlink_score) * 5, 1), 1) AS score
 FROM all_trans t1
     JOIN all_trans t2 ON (
         t1.to_lang = t2.from_lang AND
         t1.to_vocable = t2.from_vocable
     )
-    LEFT JOIN all_trans backlink ON (
+    LEFT JOIN backlink_score backlink ON (
         -- When the intermediate language has a sense with a translation
         -- back to the original word, then translations of this sense to
         -- the target language are much better.
-        backlink.from_lang = t1.to_lang AND
-        backlink.to_lang = t1.from_lang AND
-        backlink.to_vocable = t1.from_vocable AND
-        backlink.sense = t2.sense
+        backlink.from_lang = t1.from_lang AND
+        backlink.to_lang = t1.to_lang AND
+        backlink.from_vocable = t1.from_vocable AND
+        backlink.to_vocable = t1.to_vocable AND
+        backlink.back_sense = t2.sense
     )
 -- Translating from a language to itself makes no sense, but it's great for debugging!
 --WHERE t1.from_lang != t2.to_lang
-GROUP BY t1.from_lang, t2.to_lang, t1.from_vocable, t2.to_vocable,
+GROUP BY t1.from_lang, t2.to_lang, t1.from_vocable, t2.to_vocable, t1.to_lang,
     t1.lexentry, t1.sense_num, t1.sense;
 
 
