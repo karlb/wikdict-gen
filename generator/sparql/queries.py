@@ -44,6 +44,7 @@ form_query = """
 """
 
 
+# not used until the virtuoso bug 575 is fixed
 entry_query = """
     SELECT ?lexentry ?written_rep ?part_of_speech
            coalesce(?gender1, ?gender2) AS ?gender
@@ -70,6 +71,43 @@ entry_query = """
         }
 
         #FILTER (str(?written_rep) = 'Haus')  # for tests
+    }
+"""
+
+basic_entry_query = """
+    SELECT ?lexentry ?written_rep
+    WHERE {
+        ?lexentry dcterms:language lexvo:%(lang3)s ;
+                  lemon:canonicalForm ?lexform .
+        ?lexform lemon:writtenRep ?written_rep .
+    }
+"""
+
+basic_entry_pos_query = """
+    SELECT ?lexentry ?part_of_speech
+    WHERE {
+        ?lexentry dcterms:language lexvo:%(lang3)s ;
+                  lexinfo:partOfSpeech ?part_of_speech
+    }
+"""
+
+basic_entry_gender_query = """
+    SELECT ?lexentry
+           coalesce(?gender1, ?gender2) AS ?gender
+    WHERE {
+        ?lexentry dcterms:language lexvo:%(lang3)s ;
+                  lemon:canonicalForm ?lexform .
+        OPTIONAL { ?lexform lexinfo:gender ?gender1 }
+        OPTIONAL { ?lexentry lexinfo:gender ?gender2 }
+    }
+"""
+
+basic_entry_pronun_query = """
+    SELECT ?lexentry ?pronun
+    WHERE {
+        ?lexentry dcterms:language lexvo:%(lang3)s ;
+                  lemon:canonicalForm ?lexform .
+        ?lexform lexinfo:pronunciation ?pronun .
     }
 """
 

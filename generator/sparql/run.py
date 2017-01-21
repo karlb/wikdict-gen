@@ -10,7 +10,10 @@ def make_translation(from_lang, to_lang, **kwargs):
 def make_raw(lang, only):
     queries = {
             'form': sparql.form_query,
-            'entry': sparql.entry_query,
+            'entry': sparql.basic_entry_query,
+            'pos': sparql.basic_entry_pos_query,
+            'gender': sparql.basic_entry_gender_query,
+            'pronun': sparql.basic_entry_pronun_query,
             'importance': sparql.importance_query,
     }
     for name, q in queries.items():

@@ -19,16 +19,23 @@ def make_entry(conn, lang):
     conn.executescript("""
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE entry AS
-        SELECT lexentry, written_rep, choose_pos(part_of_speech) AS part_of_speech,
-            CASE
-                WHEN min(gender) == max(gender) THEN gender
-                ELSE NULL
-            END AS gender,
-            pronun_list
+        SELECT lexentry, written_rep, part_of_speech, gender,
+            group_concat(pronun, ' | ') AS pronun_list
         FROM raw.entry
-        WHERE written_rep is NOT NULL
-          AND written_rep != ''
+            LEFT JOIN raw.pos USING (lexentry)
+            LEFT JOIN raw.gender USING (lexentry)
+            LEFT JOIN raw.pronun USING (lexentry)
         GROUP BY lexentry;
+--        SELECT lexentry, written_rep, choose_pos(part_of_speech) AS part_of_speech,
+--            CASE
+--                WHEN min(gender) == max(gender) THEN gender
+--                ELSE NULL
+--            END AS gender,
+--            pronun_list
+--        FROM raw.entry
+--        WHERE written_rep is NOT NULL
+--          AND written_rep != ''
+--        GROUP BY lexentry;
         CREATE UNIQUE INDEX entry_pkey ON entry(lexentry);
     """)
 
