@@ -49,6 +49,7 @@ def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None, att
         conn.execute(
             "ATTACH DATABASE " + a)
     conn.enable_load_extension(True)
+    conn.load_extension('lib/icu')
 
     if sql:
         cur = conn.cursor()

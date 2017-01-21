@@ -1,5 +1,5 @@
 
-.PHONY: test
+.PHONY: test extensions
 .SECONDARY:  # keep intermediate files
 .DELETE_ON_ERROR:
 
@@ -48,3 +48,6 @@ ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
 
 ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlite3
 	./run.py wdweb $*
+
+extensions:
+	python3 -c "`wget -qO- https://bitbucket.org/!api/2.0/snippets/karlb/j6gxM/38eff66f830e1c96b99e2ebb1312cae13c772c34/files/make_sqlite_ext.py`" lib spellfix icu
