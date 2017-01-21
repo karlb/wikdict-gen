@@ -9,10 +9,21 @@ TOKENIZER = defaultdict(lambda: 'unicode61', {
 
 
 def apply_views(conn, view_file='views.sql'):
-    conn.create_function('remove_formatting', 1, remove_formatting)
     with open(view_file) as f:
         f.readline()  # skip first line
         conn.executescript(f.read())
+
+
+def make_vocable(conn, lang):
+    conn.executescript("""
+        DROP TABLE IF EXISTS main.vocable;
+        CREATE TABLE main.vocable AS
+        SELECT DISTINCT
+            written_rep,
+            lower(written_rep) AS written_lower
+        FROM processed.entry;
+        CREATE INDEX vocable_lower_idx ON vocable(written_lower);
+    """)
 
 
 def make_entry(conn, lang):
@@ -22,7 +33,7 @@ def make_entry(conn, lang):
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE main.entry AS
         SELECT entry.*, display, display_addition
-        FROM generic.entry
+        FROM processed.entry
              LEFT JOIN lexentry_display USING (lexentry)
         WHERE written_rep IS NOT NULL;
 
@@ -154,10 +165,12 @@ def do(lang, only, sql, **kwargs):
     if '-' not in lang:
         attach = []
         targets = [
+            ('vocable', make_vocable),
             ('display', make_display),
             ('entry', make_entry),
             ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
         ]
+        in_path = 'processed'
     else:
         (from_lang, to_lang) = lang.split('-')
         attach = [
@@ -175,10 +188,11 @@ def do(lang, only, sql, **kwargs):
             ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
             ('stats', update_stats),
         ]
+        in_path = 'generic'
 
     make_targets(
         lang,
-        in_path='generic',
+        in_path=in_path,
         out_path='wdweb',
         attach=attach,
         targets=targets,
