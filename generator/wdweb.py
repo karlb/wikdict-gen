@@ -107,7 +107,7 @@ def make_translation(conn, lang_pair):
                 FROM entry
             ) USING (lexentry)
         ORDER BY lexentry, min_sense_num;
-        CREATE INDEX main.translation_lexentry_idx ON translation('lexentry');
+        --CREATE INDEX main.translation_lexentry_idx ON translation('lexentry');
         CREATE INDEX main.translation_written_rep_idx ON translation('written_rep');
     """)
 
@@ -120,18 +120,19 @@ def make_search_index(conn, lang_pair):
         -- search table
         DROP TABLE IF EXISTS main.search_trans;
         CREATE VIRTUAL TABLE main.search_trans USING fts4(
-            form, lexentry, tokenize={}, notindexed=lexentry
+            form, written_rep, tokenize={}, notindexed=written_rep
         );
 
         -- insert data
         INSERT INTO main.search_trans
-        SELECT written_rep, lexentry
+        SELECT written_rep, written_rep
         FROM main.translation
         UNION
-        SELECT other_written, lexentry
+        SELECT other_written, written_rep
         FROM form
-        WHERE lexentry IN (
-            SELECT lexentry FROM main.translation
+            JOIN entry USING (lexentry)
+        WHERE written_rep IN (
+            SELECT written_rep FROM main.translation
         );
     """.format(TOKENIZER[from_lang]))
 
