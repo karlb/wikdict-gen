@@ -149,6 +149,7 @@ def update_stats(conn, lang_pair):
             to_lang text,
             translations int,
             forms int,
+            score int,
             PRIMARY KEY (from_lang, to_lang)
         );
     """)
@@ -156,10 +157,15 @@ def update_stats(conn, lang_pair):
         DELETE FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
     """, [from_lang, to_lang])
     conn.execute("""
-        INSERT INTO wikdict.lang_pair(from_lang, to_lang, translations, forms)
-        SELECT ?, ?,
-            (SELECT count(*) FROM main.translation),
-            (SELECT count(*) FROM form)
+        INSERT INTO wikdict.lang_pair(from_lang, to_lang,
+            translations, forms, score)
+        SELECT ?, ?, translations,
+            (SELECT count(*) FROM form), round(score)
+        FROM (
+            SELECT count(*) AS translations,
+                sum(translation_score) AS score
+            FROM main.translation
+        )
     """, [from_lang, to_lang])
 
 
