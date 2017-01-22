@@ -91,8 +91,10 @@ html_parser = MyHTMLParser()
 
 
 bold_and_italics = re.compile(r"'{2,3}")
+noise_at_start = re.compile(r"^: ?")
 
 
 def clean_wiki_syntax(x):
+    x = noise_at_start.sub('', x)
     return bold_and_italics.sub('', x)
 

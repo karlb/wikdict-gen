@@ -39,6 +39,11 @@ class TestParseCleanup(unittest.TestCase):
         self.assertEqual(clean_wiki_syntax("Karl's test case"),
                          "Karl's test case")
 
+    def test_noise_at_start(self):
+        self.assertEqual(
+            clean_wiki_syntax(": Gesamtheit, alle "),
+            "Gesamtheit, alle ")
+
 
 if __name__ == '__main__':
     unittest.main()
