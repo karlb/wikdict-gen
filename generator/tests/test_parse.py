@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # vim: set fileencoding=utf-8 :
+# pylint: disable=line-too-long
 import unittest
 
 from parse import html_parser, clean_wiki_syntax
