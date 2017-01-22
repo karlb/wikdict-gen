@@ -45,6 +45,14 @@ class TestParseCleanup(unittest.TestCase):
             clean_wiki_syntax(": Gesamtheit, alle "),
             "Gesamtheit, alle ")
 
+    def test_double_brackets(self):
+        self.assertEqual(
+            clean_wiki_syntax("Qui est en [[âge]] de se [[marier]]"),
+            "Qui est en âge de se marier")
+        self.assertEqual(
+            clean_wiki_syntax("Voir [[sauter#fr|sauter]]"),
+            "Voir sauter")
+
 
 if __name__ == '__main__':
     unittest.main()

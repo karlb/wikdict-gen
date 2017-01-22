@@ -92,9 +92,11 @@ html_parser = MyHTMLParser()
 
 bold_and_italics = re.compile(r"'{2,3}")
 noise_at_start = re.compile(r"^: ?")
+double_brackets = re.compile(r"\[\[(?:[\w#]+\|)?(\w+)\]\]")
 
 
 def clean_wiki_syntax(x):
     x = noise_at_start.sub('', x)
+    x = double_brackets.sub(r'\1', x)
     return bold_and_italics.sub('', x)
 
