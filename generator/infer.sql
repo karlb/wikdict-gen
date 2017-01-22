@@ -23,8 +23,8 @@ FROM backlink_full
 GROUP BY from_lang, to_lang, from_vocable, to_vocable, back_sense;
 
 
-DROP VIEW IF EXISTS indirect;
-CREATE VIEW indirect AS
+DROP TABLE IF EXISTS indirect;
+CREATE TABLE indirect AS
 SELECT t1.from_lang, t2.to_lang, 'indirect' AS source,
     t1.to_lang || CASE
             WHEN backlink_score = 1 THEN '+'
@@ -75,14 +75,30 @@ SELECT to_lang AS from_lang, from_lang AS to_lang, 'direct_reverse' AS source,
 FROM all_trans;
 
 
-DROP VIEW IF EXISTS all_inputs;
-CREATE VIEW all_inputs AS
+DROP TABLE IF EXISTS with_lexentry;
+CREATE TABLE with_lexentry AS
 SELECT * FROM direct
 UNION ALL
-SELECT * FROM indirect
+SELECT * FROM indirect;
+CREATE INDEX w_lex_idx  ON with_lexentry(from_lang, to_lang, from_vocable, to_vocable);
+
+
+DROP VIEW IF EXISTS all_inputs;
+CREATE VIEW all_inputs AS
+SELECT *
+FROM with_lexentry
 UNION ALL
-SELECT * FROM direct_reverse
-;
+SELECT * FROM (
+    SELECT * FROM direct_reverse r
+    -- Only keep translations with lexentry if translations both with and
+    -- without lexentry are available.
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM with_lexentry l
+        WHERE (l.from_lang, l.to_lang, l.from_vocable, l.to_vocable) =
+            (r.from_lang, r.to_lang, r.from_vocable, r.to_vocable)
+    )
+);
 
 
 DROP TABLE IF EXISTS infer;
@@ -94,7 +110,7 @@ SELECT from_lang, to_lang, lexentry, sense_num, sense,
     sum(score) AS score
 FROM all_inputs
 GROUP BY from_lang, to_lang, lexentry, sense_num, sense,
-    from_vocable, to_vocable ;
+    from_vocable, to_vocable;
 
 
 DROP TABLE IF EXISTS infer_grouped;
