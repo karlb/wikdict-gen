@@ -56,7 +56,7 @@ def infer(**kwargs):
 
 
 def do(lang, sql, **kwargs):
-    (from_lang, to_lang) = lang.split('-')
+    (from_lang, _) = lang.split('-')
     targets = [
         ('collect', collect),
     ]

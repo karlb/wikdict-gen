@@ -113,7 +113,7 @@ def make_translation(conn, lang_pair):
 
 
 def make_search_index(conn, lang_pair):
-    from_lang, to_lang = lang_pair.split('-')
+    from_lang, _ = lang_pair.split('-')
 
     # main search index
     conn.executescript("""
@@ -137,7 +137,8 @@ def make_search_index(conn, lang_pair):
     """.format(TOKENIZER[from_lang]))
 
     # optimize
-    conn.execute("INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
+    conn.execute(
+        "INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
 
 
 def update_stats(conn, lang_pair):
@@ -175,12 +176,10 @@ def do(lang, only, sql, **kwargs):
     else:
         (from_lang, to_lang) = lang.split('-')
         attach = [
-            "'dictionaries/generic/%s-%s.sqlite3' AS other_pair"
-                % (to_lang, from_lang),
-            "'dictionaries/processed/%s.sqlite3' AS lang"
-                % (from_lang),
-            "'dictionaries/processed/%s.sqlite3' AS other"
-                % (to_lang),
+            "'dictionaries/generic/%s-%s.sqlite3' AS other_pair" % (
+                to_lang, from_lang),
+            "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
+            "'dictionaries/processed/%s.sqlite3' AS other" % (to_lang),
             "'dictionaries/wdweb/wikdict.sqlite3' AS wikdict",
         ]
         targets = [
