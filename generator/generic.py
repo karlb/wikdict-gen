@@ -1,57 +1,12 @@
-import re
-
 from helper import make_targets
-from parse import html_parser, clean_wiki_syntax
-
-sense_num_re = re.compile(r'(\d+)(\w)?')
-
-
-def log_exceptions(f):
-    def f_with_log(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except Exception as e:
-            print('Error in function "{}":'.format(f.__name__))
-            print(e)
-            raise
-    return f_with_log
-
-
-@log_exceptions
-def parse_sense_num(c):
-    if not c:
-        return None
-    match = sense_num_re.match(c)
-    assert match, 'Sense re does not match for %r' % c
-    normalized_sense_num = '{:02d}'.format(int(match.group(1)))
-    if match.group(2):
-        normalized_sense_num += match.group(2)
-    return normalized_sense_num
-
-
-@log_exceptions
-def parse_sense(sense):
-    if sense is None:
-        return None
-    sense = sense.strip()
-    if sense == '':
-        return None
-
-    sense = html_parser.parse(sense)
-    sense = clean_wiki_syntax(sense)
-    return sense
 
 
 def translation(conn, lang):
-    conn.create_function('parse_sense_num', 1, parse_sense_num)
-    conn.create_function('parse_sense', 1, parse_sense)
     conn.execute("DROP TABLE IF EXISTS main.translation")
     conn.execute("""
         CREATE TABLE translation AS
         WITH lang_trans AS (
-            SELECT lexentry, parse_sense_num(sense_num) AS sense_num,
-                sense_num AS orig_sense_num,
-                parse_sense(sense) AS sense,
+            SELECT lexentry, sense_num, sense,
                 from_vocable AS written_rep, trans_list, score,
                 score >= 20 AND lexentry IS NOT NULL AS is_good
             FROM infer.infer_grouped
@@ -87,7 +42,6 @@ def translation(conn, lang):
 
 
 def do(lang, sql, **kwargs):
-    (from_lang, to_lang) = lang.split('-')
     targets = [
         ('translation', translation),
     ]
