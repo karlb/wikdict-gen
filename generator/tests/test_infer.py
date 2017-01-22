@@ -14,16 +14,16 @@ class TestInfer(unittest.TestCase):
         cur.execute("""
             SELECT agg_by_score(trans, score)
             FROM (
-                SELECT 'Haus' AS trans, 3 AS score
+                SELECT 'Haus' AS trans, 30 AS score
                 UNION ALL
                 SELECT 'Hütte' AS trans, 2 AS score
                 UNION ALL
-                SELECT 'Wohnung' AS trans, 5 AS score
+                SELECT 'Wohnung' AS trans, 100 AS score
             )
         """)
         self.assertEqual(
             cur.fetchall(),
-            [('Wohnung || Haus', )]
+            [('Wohnung | Haus', )]
         )
 
 
