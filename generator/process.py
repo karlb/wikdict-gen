@@ -1,7 +1,7 @@
 import re
 
 from helper import make_targets
-from parse import html_parser, clean_wiki_syntax
+import parse
 
 sense_num_re = re.compile(r'(\d+)(\w)?')
 
@@ -43,15 +43,20 @@ def parse_sense_num(c):
 
 
 @log_exceptions
-def parse_sense(sense):
+def parse_sense(sense, lang):
     if sense is None:
         return None
     sense = sense.strip()
     if sense == '':
         return None
 
-    sense = html_parser.parse(sense)
-    sense = clean_wiki_syntax(sense)
+    sense = parse.clean_wiki_syntax(sense)
+    sense = parse.html_parser.parse(sense)
+
+    # do this after syntax cleanup to make matches easier
+    if parse.is_dummy_sense(sense, lang):
+        return None
+
     return sense
 
 
@@ -100,8 +105,13 @@ def make_importance(conn, lang):
 
 
 def make_translation(conn, lang):
+    (from_lang, _) = lang.split('-')
+
+    def parse_sense_with_lang(x):
+        return parse_sense(x, from_lang)
+
     conn.create_function('parse_sense_num', 1, parse_sense_num)
-    conn.create_function('parse_sense', 1, parse_sense)
+    conn.create_function('parse_sense', 1, parse_sense_with_lang)
     conn.executescript("""
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE translation AS

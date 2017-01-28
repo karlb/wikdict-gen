@@ -3,7 +3,7 @@
 # pylint: disable=line-too-long
 import unittest
 
-from parse import html_parser, clean_wiki_syntax
+from parse import html_parser, clean_wiki_syntax, is_dummy_sense
 
 
 class TestParseHTML(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestParseCleanup(unittest.TestCase):
     def test_noise_at_start(self):
         self.assertEqual(
             clean_wiki_syntax(": Gesamtheit, alle "),
-            "Gesamtheit, alle ")
+            "Gesamtheit, alle")
 
     def test_double_brackets(self):
         self.assertEqual(
@@ -52,6 +52,33 @@ class TestParseCleanup(unittest.TestCase):
         self.assertEqual(
             clean_wiki_syntax("Voir [[sauter#fr|sauter]]"),
             "Voir sauter")
+        self.assertEqual(
+            clean_wiki_syntax("[[bloc de béton]]"),
+            "bloc de béton")
+
+    def test_dummy_sense(self):
+        dummies = [
+            'Traductions à trier suivant le sens',
+            'Traductions à trier suivant le sens.',
+            'Traductions à trier',
+            'À trier',
+            'à trier',
+            'Traduction à trier',
+            'Traductions à vérifier et à trier',
+            'À trier selon le sens',
+            'Traductions à classer d’après le sens',
+            'traduction à classer',
+            'A trier',
+            'Autres sens à trier',
+        ]
+        for d in dummies:
+            self.assertEqual(is_dummy_sense(d, 'fr'), True, d)
+        self.assertEqual(is_dummy_sense('Le sense', 'fr'), False)
+
+    def test_braces_nocat(self):
+        self.assertEqual(
+            clean_wiki_syntax("Saillir une femelle (la féconder).|9 {{trans|nocat=1"),
+            "Saillir une femelle (la féconder).")
 
 
 if __name__ == '__main__':

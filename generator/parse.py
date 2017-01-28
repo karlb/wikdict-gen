@@ -91,12 +91,28 @@ html_parser = MyHTMLParser()
 
 
 bold_and_italics = re.compile(r"'{2,3}")
-noise_at_start = re.compile(r"^: ?")
-double_brackets = re.compile(r"\[\[(?:[\w#]+\|)?(\w+)\]\]")
+noise_at_start = re.compile(r"^[:\|] ?")
+double_brackets = re.compile(r"\[\[(?:[\w#]+\|)?([\w ]+)\]\]")
+braces_nocat = re.compile(r"\|(?:\d+ )?{{.*nocat=1")
+braces_notclosed = re.compile(r"{{[^}]+")
 
 
 def clean_wiki_syntax(x):
     x = noise_at_start.sub('', x)
     x = double_brackets.sub(r'\1', x)
-    return bold_and_italics.sub('', x)
+    x = bold_and_italics.sub('', x)
+    x = braces_nocat.sub('', x)
+    # not a proper solution, some data gets lost
+    x = braces_notclosed.sub('', x)
+    return x.strip()
 
+
+fr_dummy_sense = re.compile(
+    r"^(?:(?:traductions|sens)?.* )?[àa] (?:trier|classer)",
+    re.IGNORECASE)
+
+
+def is_dummy_sense(sense, lang):
+    if lang == 'fr':
+        return bool(fr_dummy_sense.search(sense))
+    return False
