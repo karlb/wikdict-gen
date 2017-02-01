@@ -102,7 +102,7 @@ def clean_wiki_syntax(x):
     x = double_brackets.sub(r'\1', x)
     x = bold_and_italics.sub('', x)
     x = braces_nocat.sub('', x)
-    # not a proper solution, some data gets lost
+    # remove when https://bitbucket.org/serasset/dbnary/issues/25 is fixed
     x = braces_notclosed.sub('', x)
     return x.strip()
 
