@@ -1,4 +1,5 @@
 from helper import make_targets
+from infer import AggByScore
 
 
 def translation(conn, lang):
@@ -41,9 +42,31 @@ def translation(conn, lang):
     """)
 
 
-def do(lang, sql, **kwargs):
+def simple_translation(conn, lang):
+    conn.create_aggregate("agg_by_score", 2, AggByScore)
+    conn.execute("""DROP TABLE IF EXISTS simple_translation""")
+    conn.execute("""
+        CREATE TABLE simple_translation AS
+        SELECT from_vocable AS written_rep,
+            agg_by_score(to_vocable, max_score) AS trans_list,
+            max(max_score) AS max_score,
+            rel_importance.rel_score AS rel_importance
+        FROM (
+            SELECT from_vocable, to_vocable, max(score) AS max_score
+            FROM infer
+            WHERE (from_lang, to_lang) = (?, ?)
+            GROUP BY from_vocable, to_vocable
+            ORDER BY from_vocable, coalesce(min(sense_num), '999'), max(score) DESC
+        ) LEFT JOIN lang.rel_importance ON (from_vocable = vocable)
+        GROUP BY from_vocable
+        """, lang.split('-'))
+
+
+def do(lang, sql, only, **kwargs):
+    from_lang, _ = lang.split('-')
     targets = [
         ('translation', translation),
+        ('simple_translation', simple_translation),
     ]
 
     make_targets(
@@ -51,8 +74,12 @@ def do(lang, sql, **kwargs):
         in_path='processed',
         out_path='generic',
         targets=targets,
-        attach=["'dictionaries/infer.sqlite3' AS infer"],
+        attach=[
+            "'dictionaries/infer.sqlite3' AS infer",
+            "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
+        ],
         sql=sql,
+        only=only,
     )
 
 
@@ -62,3 +89,4 @@ def add_subparsers(subparsers):
     process.add_argument('lang')
     process.set_defaults(func=do)
     process.add_argument('--sql')
+    process.add_argument('--only')

@@ -28,7 +28,6 @@ def make_vocable(conn, lang):
 
 def make_entry(conn, lang):
     conn.load_extension('lib/spellfix1')
-    apply_views(conn, 'single_views.sql')
     conn.executescript("""
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE main.entry AS
@@ -112,6 +111,21 @@ def make_translation(conn, lang_pair):
     """)
 
 
+def make_simple_translation(conn, lang_pair):
+    conn.executescript("""
+        DROP TABLE IF EXISTS main.simple_translation;
+
+        CREATE TABLE main.simple_translation AS
+        SELECT written_rep COLLATE NOCASE,
+            trans_list, max_score, rel_importance
+        FROM generic.simple_translation
+        ORDER BY max_score * rel_importance DESC;
+
+        CREATE INDEX main.simple_translation_index
+            ON simple_translation('written_rep');
+    """)
+
+
 def make_search_index(conn, lang_pair):
     from_lang, _ = lang_pair.split('-')
 
@@ -190,6 +204,7 @@ def do(lang, only, sql, **kwargs):
         ]
         targets = [
             ('translation', make_translation),
+            ('simple_translation', make_simple_translation),
             ('search_index', make_search_index),
             ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
             ('stats', update_stats),

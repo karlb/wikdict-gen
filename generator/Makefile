@@ -12,9 +12,8 @@ ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LAN
 ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
 all: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
-
 raw: ${ALL_RAW}
-
+processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
 
 test:
