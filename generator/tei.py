@@ -132,18 +132,24 @@ def get_translations(from_lang, to_lang):
     conn.execute(
         "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang"
         % from_lang)
+    good_translations = next(conn.execute("""
+        SELECT count(*) FROM translation WHERE score >= 100
+    """))[0]
+    expected_good_translations = 50000
+    min_translation_score = round(
+        (good_translations - 1000) / expected_good_translations * 100)
+    min_translation_score = max(min(min_translation_score, 100), 0)
+    print('{} good translations, min_score = {}'.format(
+        good_translations, min_translation_score))
     translations = conn.execute("""
         SELECT lexentry,
             t.written_rep, t.sense_list, t.trans_list,
             e.gender, e.part_of_speech, e.pronun_list
         FROM translation_grouped t
              JOIN prod_lang.entry e USING (lexentry)
+        WHERE score >= ?
         ORDER BY t.written_rep, e.part_of_speech, e.gender, e.pronun_list, t.min_sense_num
-        --UNION ALL
-        --SELECT NULL, written_rep, NULL, trans_list, NULL
-        --FROM search_reverse_trans
-        --ORDER BY written_rep
-    """)
+    """, [min_translation_score])
     groups = groupby(translations,
                      lambda t: (t['written_rep'], t['part_of_speech'],
                                 t['gender'], t['pronun_list']))
