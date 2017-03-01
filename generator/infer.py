@@ -38,7 +38,7 @@ class AggByScore:
 
     def finalize(self):
         result = []
-        min_score = 1
+        min_score = 0
         trans_list = sorted(self.trans_list, key=lambda x: -x[1])
         for trans, score in trans_list:
             if score >= min_score:
