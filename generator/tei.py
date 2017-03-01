@@ -165,40 +165,7 @@ def get_translations(from_lang, to_lang):
         yield entry
 
 
-def single_tei_entry(x, to_lang):
-    # entry
-    entry = Element('entry')
-    form = SubElement(entry, 'form')
-    orth = SubElement(form, 'orth')
-    if x['pronuns']:
-        for p in x['pronuns']:
-            pron = SubElement(form, 'pron')
-            pron.text = p
-    is_suffix = (
-        x['part_of_speech'] == 'suffix' or
-        (x['part_of_speech'] in ('', None)
-            and x['written_rep'].startswith('-'))
-    )
-    if is_suffix:
-        assert x['written_rep'].startswith('-')
-        orth.text = x['written_rep'][1:]
-        pos_text = 'suffix'
-    else:
-        orth.text = x['written_rep']
-        pos_text = pos_mapping.get(x['part_of_speech'],
-                                    (x['part_of_speech'], None))[0]
-
-    # gramGrp
-    gram_grp = Element('gramGrp')
-    if pos_text:
-        pos = SubElement(gram_grp, 'pos')
-        pos.text = pos_text
-    if x['gender']:
-        gen= SubElement(gram_grp, 'gen')
-        gen.text = gender_mapping[x['gender']]
-    if list(gram_grp):
-        entry.append(gram_grp)
-
+def add_senses(entry, x, to_lang, is_suffix):
     # sense
     for i, s in enumerate(x['senses']):
         if len(x['senses']) == 1:
@@ -213,12 +180,49 @@ def single_tei_entry(x, to_lang):
 
         # translation
         cit = SubElement(sense, 'cit',
-                        {'type': 'trans', 'xml:lang': to_lang})
+                         {'type': 'trans', 'xml:lang': to_lang})
         for trans in s['trans_list']:
             quote = SubElement(cit, 'quote')
             if is_suffix:
                 trans = trans[1:]
             quote.text = trans
+
+
+def single_tei_entry(x, to_lang):
+    # entry
+    entry = Element('entry')
+    form = SubElement(entry, 'form')
+    orth = SubElement(form, 'orth')
+    if x['pronuns']:
+        for p in x['pronuns']:
+            pron = SubElement(form, 'pron')
+            pron.text = p
+    is_suffix = (
+        x['part_of_speech'] == 'suffix' or
+        (x['part_of_speech'] in ('', None)
+         and x['written_rep'].startswith('-'))
+    )
+    if is_suffix:
+        assert x['written_rep'].startswith('-')
+        orth.text = x['written_rep'][1:]
+        pos_text = 'suffix'
+    else:
+        orth.text = x['written_rep']
+        pos_text = pos_mapping.get(x['part_of_speech'],
+                                   (x['part_of_speech'], None))[0]
+
+    # gramGrp
+    gram_grp = Element('gramGrp')
+    if pos_text:
+        pos = SubElement(gram_grp, 'pos')
+        pos.text = pos_text
+    if x['gender']:
+        gen = SubElement(gram_grp, 'gen')
+        gen.text = gender_mapping[x['gender']]
+    if list(gram_grp):
+        entry.append(gram_grp)
+
+    add_senses(entry, x, to_lang, is_suffix)
 
     return entry
 
@@ -254,8 +258,8 @@ def get_tei_entries_as_xml(from_lang, to_lang):
 def write_tei_dict(from_lang, to_lang):
     print(from_lang, to_lang)
     out_filename = 'dictionaries/tei/{}-{}.tei'.format(
-                        language_codes3[from_lang],
-                        language_codes3[to_lang])
+        language_codes3[from_lang],
+        language_codes3[to_lang])
     pos_usage = ''.join('<item ana="{1}">{0}</item>'.format(*pos)
                         for pos in list(pos_mapping.values()))
 
@@ -272,11 +276,11 @@ def write_tei_dict(from_lang, to_lang):
     # prepare template
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
     tei_template_xml = XML(tei_template.format(
-            from_name=language_names[from_lang],
-            to_name=language_names[to_lang], headwords=headwords,
-            from_lang=from_lang,
-            today=datetime.date.today(), pos_usage=pos_usage,
-            status=status,
+        from_name=language_names[from_lang],
+        to_name=language_names[to_lang], headwords=headwords,
+        from_lang=from_lang,
+        today=datetime.date.today(), pos_usage=pos_usage,
+        status=status,
     ))
     indent(tei_template_xml)
 
@@ -322,4 +326,5 @@ if __name__ == '__main__':
     main()
 
 # validate
-# xmllint --noout --dtdvalid freedict-P5.dtd --relaxng freedict-P5.rng.txt --valid *.tei
+# xmllint --noout --dtdvalid freedict-P5.dtd --relaxng freedict-P5.rng.txt \
+#   --valid *.tei
