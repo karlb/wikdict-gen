@@ -133,8 +133,14 @@ def make_translation(conn, lang):
         SELECT lexentry, parse_sense_num(sense_num) AS sense_num,
             sense_num AS orig_sense_num,
             parse_sense(sense) AS sense,
-            trans
+            written_rep,
+            trans,
+            from_imp.rel_score AS from_importance,
+            coalesce(to_imp.rel_score, 0.001) AS to_importance
         FROM raw.translation
+            JOIN lang.entry USING (lexentry)
+            JOIN lang.rel_importance from_imp ON (entry.written_rep = from_imp.vocable)
+            LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.vocable)
     """)
 
 
@@ -145,9 +151,15 @@ def do(lang, only, sql, **kwargs):
             ('form', make_form),
             ('importance', make_importance),
         ]
+        attach = []
     else:
+        (from_lang, to_lang) = lang.split('-')
         targets = [
             ('translation', make_translation),
+        ]
+        attach = [
+            "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
+            "'dictionaries/processed/%s.sqlite3' AS other_lang" % (to_lang),
         ]
 
     make_targets(
@@ -155,6 +167,7 @@ def do(lang, only, sql, **kwargs):
         in_path='raw',
         out_path='processed',
         targets=targets,
+        attach=attach,
         only=only,
         sql=sql,
     )

@@ -7,13 +7,15 @@ def collect(conn, lang):
     (from_lang, to_lang) = lang.split('-')
     conn.execute("""
         CREATE TABLE IF NOT EXISTS all_trans(
-            from_lang text,
-            to_lang text,
+            from_lang text NOT NULL,
+            to_lang text NOT NULL,
             lexentry text,
             sense_num text,
             sense text NOT NULL,
-            from_vocable text,
-            to_vocable text
+            from_vocable text NOT NULL,
+            to_vocable text NOT NULL,
+            from_importance float NOT NULL,
+            to_importance floa NOT NULL
         );
     """)
     conn.execute("""
@@ -22,9 +24,9 @@ def collect(conn, lang):
     """, [from_lang, to_lang])
     conn.execute("""
         INSERT INTO all_trans
-        SELECT ?, ?, lexentry, sense_num, coalesce(sense, ''), written_rep, trans
+        SELECT ?, ?, lexentry, sense_num, coalesce(sense, ''),
+            written_rep, trans, from_importance, to_importance
         FROM processed.translation
-            JOIN lang.entry USING (lexentry)
     """, [from_lang, to_lang])
 
 

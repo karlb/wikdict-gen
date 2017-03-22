@@ -33,7 +33,8 @@ SELECT t1.from_lang, t2.to_lang, 'indirect' AS source,
         END || ':' || t1.to_vocable AS source_detail,
     t1.from_vocable, t2.to_vocable,
     t1.lexentry, t1.sense_num, t1.sense,
-    coalesce(round(max(backlink_score * backlink_score) * 10, 1), 1) AS score
+    coalesce(round(max(backlink_score * backlink_score) * 10, 1), 1) AS score,
+    t1.from_importance, t2.to_importance
 FROM all_trans t1
     JOIN all_trans t2 ON (
         t1.to_lang = t2.from_lang AND
@@ -61,7 +62,8 @@ SELECT from_lang, to_lang, 'direct' AS source,
     null AS source_detail,
     from_vocable, to_vocable,
     lexentry, sense_num, sense,
-    100 AS score
+    100 AS score,
+    from_importance, to_importance
 FROM all_trans;
 
 
@@ -71,7 +73,8 @@ SELECT to_lang AS from_lang, from_lang AS to_lang, 'direct_reverse' AS source,
     null AS source_detail,
     to_vocable AS from_vocable, from_vocable AS to_vocable,
     null AS lexentry, null AS sense_num, null AS sense,
-    2 AS score
+    2 AS score,
+    from_importance, to_importance
 FROM all_trans;
 
 
@@ -107,16 +110,21 @@ SELECT from_lang, to_lang, lexentry, sense_num, sense,
     from_vocable, to_vocable,
     group_concat(source) AS sources,
     group_concat(source_detail) AS source_details,
-    sum(score) AS score
+    sum(score) AS score,
+    from_importance, to_importance
 FROM all_inputs
 GROUP BY from_lang, to_lang, lexentry, sense_num, sense,
-    from_vocable, to_vocable;
+    from_vocable, to_vocable, from_importance, to_importance;
+/* TODO: The following constraint should be ok, but there's still a few violations. */
+/* CREATE UNIQUE INDEX infer_pkey ON infer(from_lang, to_lang, lexentry, */
+/*     sense, from_vocable, to_vocable); */
 
 
 DROP TABLE IF EXISTS infer_grouped;
 CREATE TABLE infer_grouped AS
 SELECT from_lang, to_lang, lexentry, sense_num, sense,
     from_vocable, agg_by_score(to_vocable, score) AS trans_list,
-    max(score) AS score
+    max(score) AS score,
+    from_importance, to_importance
 FROM infer
 GROUP BY from_lang, to_lang, lexentry, sense_num, sense, from_vocable;

@@ -9,7 +9,8 @@ def translation(conn, lang):
         WITH lang_trans AS (
             SELECT lexentry, sense_num, sense,
                 from_vocable AS written_rep, trans_list, score,
-                score >= 20 AND lexentry IS NOT NULL AS is_good
+                score >= 20 AND lexentry IS NOT NULL AS is_good,
+                from_importance * to_importance AS importance
             FROM infer.infer_grouped
             WHERE from_lang = ? AND to_lang = ?
         )
@@ -31,7 +32,7 @@ def translation(conn, lang):
         CREATE VIEW translation_grouped AS
         SELECT lexentry, written_rep, min(sense_num) AS min_sense_num,
             group_concat(sense, ' | ') AS sense_list,
-            trans_list, max(score) AS score
+            trans_list, max(score) AS score, max(importance) AS importance
         FROM (
             -- force order in group_concat
             SELECT *
