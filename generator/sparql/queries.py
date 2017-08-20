@@ -29,16 +29,14 @@ translation_query_type = {
 form_query = """
     SELECT ?lexentry ?other_written ?case ?number ?inflection ?pos
     WHERE {
-        ?lexentry lemon:canonicalForm ?canonical_form ;
-                lemon:otherForm ?other_form ;
-                dcterms:language lexvo:%(lang3)s .
-        ?canonical_form lemon:writtenRep ?canonical_written .
+        ?lexentry a ontolex:LexicalEntry ;
+                  dct:language lexvo:%(lang3)s ;
+                  ontolex:otherForm ?other_form .
 
-        ?other_form lemon:writtenRep ?other_written .
+        ?other_form ontolex:writtenRep ?other_written .
         OPTIONAL { ?other_form olia:hasCase ?case }
         OPTIONAL { ?other_form olia:hasNumber ?number }
         OPTIONAL { ?other_form olia:hasInflectionType ?inflection }
-
         OPTIONAL { ?lexentry lexinfo:partOfSpeech ?pos }
     }
 """
@@ -52,7 +50,7 @@ entry_query = """
     WHERE {
         ?lexform lemon:writtenRep ?written_rep .
         ?lexentry lemon:canonicalForm ?lexform ;
-                  dcterms:language lexvo:%(lang3)s .
+                  dct:language lexvo:%(lang3)s .
 
         ?lexentry lexinfo:partOfSpeech ?part_of_speech
         # I used optional earlier, am now missing some entries, but
@@ -77,16 +75,18 @@ entry_query = """
 basic_entry_query = """
     SELECT ?lexentry ?written_rep
     WHERE {
-        ?lexentry dcterms:language lexvo:%(lang3)s ;
-                  lemon:canonicalForm ?lexform .
-        ?lexform lemon:writtenRep ?written_rep .
+        ?lexentry a ontolex:LexicalEntry ;
+                  dct:language lexvo:%(lang3)s ;
+                  ontolex:canonicalForm [
+                      ontolex:writtenRep ?written_rep]
     }
 """
 
 basic_entry_pos_query = """
     SELECT ?lexentry ?part_of_speech
     WHERE {
-        ?lexentry dcterms:language lexvo:%(lang3)s ;
+        ?lexentry a ontolex:LexicalEntry ;
+                  dct:language lexvo:%(lang3)s ;
                   lexinfo:partOfSpeech ?part_of_speech
     }
 """
@@ -95,43 +95,52 @@ basic_entry_gender_query = """
     SELECT ?lexentry
            coalesce(?gender1, ?gender2) AS ?gender
     WHERE {
-        ?lexentry dcterms:language lexvo:%(lang3)s ;
-                  lemon:canonicalForm ?lexform .
-        OPTIONAL { ?lexform lexinfo:gender ?gender1 }
-        OPTIONAL { ?lexentry lexinfo:gender ?gender2 }
+        ?lexentry a ontolex:LexicalEntry ;
+                  dct:language lexvo:%(lang3)s .
+        OPTIONAL {
+            ?lexentry ontolex:canonicalForm [lexinfo:gender ?gender1]
+        }
+        OPTIONAL {
+            ?lexentry lexinfo:gender ?gender2 .
+        }
     }
 """
 
 basic_entry_pronun_query = """
     SELECT ?lexentry ?pronun
     WHERE {
-        ?lexentry dcterms:language lexvo:%(lang3)s ;
-                  lemon:canonicalForm ?lexform .
-        ?lexform lexinfo:pronunciation ?pronun .
+        ?lexentry a ontolex:LexicalEntry ;
+                  dct:language lexvo:%(lang3)s ;
+                  ontolex:canonicalForm [lexinfo:pronunciation ?pronun]
     }
 """
 
 
 translation_query = {
-    'sense': """
-        SELECT ?lexentry ?sense_num ?def_value AS ?sense
+    'sense': r"""
+        SELECT ?lexentry
+            ?sense_num
+            ?def_value AS ?sense
             ?trans AS ?trans_entity
             ?written_trans AS ?trans
         WHERE {
-            ?lexentry lemon:canonicalForm ?lexform ;
-                      dcterms:language lexvo:%(from_lang3)s ;
-                      lemon:sense ?sense .
+            ?lexentry a ontolex:LexicalEntry ;
+                      dct:language lexvo:%(from_lang3)s ;
+                      ontolex:sense [
+                          a ontolex:LexicalSense ;
+                          dbnary:senseNumber ?sense_num ;
+                          skos:definition [rdf:value ?def_value]
+                      ] .
+            ?trans dbnary:isTranslationOf ?lexentry ;
+                   dbnary:targetLanguage lexvo:%(to_lang3)s ;
+                   dbnary:writtenForm ?written_trans ;
+                   dbnary:gloss [dbnary:senseNumber ?tr_sense_num].
 
-            ?sense lemon:definition ?def ;
-                   dbnary:senseNumber ?sense_num .
-            ?def lemon:value ?def_value .
+            # TODO: "2" does not match "1-3" and "1b" does not match "1a-1c"
+            FILTER regex(str(?tr_sense_num), concat('(^|,| |-)\\Q', ?sense_num, '\\E($| |-)'))  # TODO: \\Q .. \\E ?
 
-            ?trans dbnary:isTranslationOf ?sense ;
-                dbnary:targetLanguage lexvo:%(to_lang3)s ;
-                dbnary:writtenForm ?written_trans .
-            FILTER (str(?written_trans) != '')
-
-            #FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/deu/Haus__Substantiv__1')  # for tests
+            # FILTER regex(?tr_sense_num, '\\d\\d')  # check interesting match cases
+            # FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
     """,
     'gloss': """
@@ -139,15 +148,17 @@ translation_query = {
             ?trans AS ?trans_entity
             ?written_trans AS ?trans
         WHERE {
-            ?lexentry lemon:canonicalForm ?lexform ;
-                      dcterms:language lexvo:%(from_lang3)s .
-
+            ?lexentry a ontolex:LexicalEntry ;
+                      dct:language lexvo:%(from_lang3)s ;
+                      ontolex:sense [
+                          dbnary:senseNumber ?sense_num ;
+                          skos:definition [rdf:value ?def_value]
+                      ].
             ?trans dbnary:isTranslationOf ?lexentry ;
                    dbnary:targetLanguage lexvo:%(to_lang3)s ;
                    dbnary:writtenForm ?written_trans .
 
             OPTIONAL {?trans dbnary:gloss ?gloss }
-
           #  FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
     """
@@ -164,13 +175,13 @@ importance_query = """
             count(DISTINCT ?synonym) AS ?synonym_count
             count(DISTINCT ?translation) AS ?translation_count
         WHERE {
-            ?vocable dbnary:refersTo ?lexentry .
-            ?lexentry dcterms:language lexvo:%(lang3)s .
+            ?vocable dbnary:describes ?lexentry .
+            ?lexentry dct:language lexvo:%(lang3)s .
             OPTIONAL {
                 ?synonym dbnary:synonym ?vocable .
             }
             OPTIONAL {
-                ?translation dbnary:isTranslationOf ?lexentry.
+                ?translation dbnary:isTranslationOf ?lexentry .
             }
             OPTIONAL {
                 ?lexentry lemon:sense ?sense .
