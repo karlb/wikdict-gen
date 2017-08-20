@@ -137,7 +137,7 @@ translation_query = {
                    dbnary:gloss [dbnary:senseNumber ?tr_sense_num].
 
             # TODO: "2" does not match "1-3" and "1b" does not match "1a-1c"
-            FILTER regex(str(?tr_sense_num), concat('(^|,| |-)\\Q', ?sense_num, '\\E($| |-)'))  # TODO: \\Q .. \\E ?
+            FILTER regex(str(?tr_sense_num), concat('(^|,| |-)\\Q', ?sense_num, '\\E($| |-)'))
 
             # FILTER regex(?tr_sense_num, '\\d\\d')  # check interesting match cases
             # FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
