@@ -73,12 +73,14 @@ entry_query = """
 """
 
 basic_entry_query = """
-    SELECT ?lexentry ?written_rep
+    SELECT ?lexentry ?vocable ?written_rep
     WHERE {
         ?lexentry a ontolex:LexicalEntry ;
                   dct:language lexvo:%(lang3)s ;
                   ontolex:canonicalForm [
-                      ontolex:writtenRep ?written_rep]
+                      ontolex:writtenRep ?written_rep] .
+        ?vocable a dbnary:Page ;
+                 dbnary:describes ?lexentry .
     }
 """
 
@@ -126,39 +128,32 @@ translation_query = {
         WHERE {
             ?lexentry a ontolex:LexicalEntry ;
                       dct:language lexvo:%(from_lang3)s ;
-                      ontolex:sense [
-                          a ontolex:LexicalSense ;
-                          dbnary:senseNumber ?sense_num ;
-                          skos:definition [rdf:value ?def_value]
-                      ] .
-            ?trans dbnary:isTranslationOf ?lexentry ;
+                      ontolex:sense ?sense .
+            ?sense a ontolex:LexicalSense ;
+                   dbnary:senseNumber ?sense_num ;
+                   skos:definition [rdf:value ?def_value] .
+            ?trans dbnary:isTranslationOf ?sense ;
                    dbnary:targetLanguage lexvo:%(to_lang3)s ;
                    dbnary:writtenForm ?written_trans ;
                    dbnary:gloss [dbnary:senseNumber ?tr_sense_num].
 
-            # TODO: "2" does not match "1-3" and "1b" does not match "1a-1c"
-            FILTER regex(str(?tr_sense_num), concat('(^|,| |-)\\Q', ?sense_num, '\\E($| |-)'))
-
-            # FILTER regex(?tr_sense_num, '\\d\\d')  # check interesting match cases
             # FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
     """,
     'gloss': """
-        SELECT ?lexentry '' AS ?sense_num ?gloss AS ?sense
+        SELECT ?lexentry
+            '' AS ?sense_num
+            ?gloss AS ?sense
             ?trans AS ?trans_entity
             ?written_trans AS ?trans
         WHERE {
             ?lexentry a ontolex:LexicalEntry ;
-                      dct:language lexvo:%(from_lang3)s ;
-                      ontolex:sense [
-                          dbnary:senseNumber ?sense_num ;
-                          skos:definition [rdf:value ?def_value]
-                      ].
+                      dct:language lexvo:%(from_lang3)s .
             ?trans dbnary:isTranslationOf ?lexentry ;
                    dbnary:targetLanguage lexvo:%(to_lang3)s ;
                    dbnary:writtenForm ?written_trans .
 
-            OPTIONAL {?trans dbnary:gloss ?gloss }
+            OPTIONAL {?trans dbnary:gloss [rdf:value ?gloss] }
           #  FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
     """
@@ -175,7 +170,8 @@ importance_query = """
             count(DISTINCT ?synonym) AS ?synonym_count
             count(DISTINCT ?translation) AS ?translation_count
         WHERE {
-            ?vocable dbnary:describes ?lexentry .
+            ?vocable a dbnary:Page ;
+                     dbnary:describes ?lexentry .
             ?lexentry dct:language lexvo:%(lang3)s .
             OPTIONAL {
                 ?synonym dbnary:synonym ?vocable .

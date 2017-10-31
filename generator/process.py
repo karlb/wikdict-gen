@@ -65,7 +65,7 @@ def make_entry(conn, lang):
     conn.executescript("""
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE entry AS
-        SELECT lexentry, written_rep, part_of_speech, gender,
+        SELECT lexentry, vocable, written_rep, part_of_speech, gender,
             group_concat(pronun, ' | ') AS pronun_list
         FROM raw.entry
             LEFT JOIN raw.pos USING (lexentry)
@@ -99,8 +99,15 @@ def make_importance(conn, lang):
     conn.executescript("""
         DROP TABLE IF EXISTS main.importance;
         CREATE TABLE importance AS
-        SELECT substr(vocable, 5) AS vocable, score
+        -- The input data should already be distinct, but Virtuoso fails to do
+        -- a proper GROUP BY for some texts like 'eng/??'
+        SELECT DISTINCT vocable, score,
+           -- TODO: This is an ugly hack. A vocable/page does not have a single
+           --       representation. Case might be different, probably other
+           --       things, too.
+           replace(substr(vocable, 5), '_', ' ') AS written_rep_guess
         FROM raw.importance;
+        CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
 
         -- When searching in two languages, the more popular one will have
         -- the higher importance scores for words. To show at least some
@@ -108,7 +115,7 @@ def make_importance(conn, lang):
         -- for the typeahead and similar features
         DROP VIEW IF EXISTS rel_importance;
         CREATE VIEW rel_importance AS
-        SELECT vocable, score, score / high_score AS rel_score
+        SELECT vocable, score, score / high_score AS rel_score, written_rep_guess
         FROM importance, (
             SELECT avg(score) AS high_score
             FROM (
@@ -139,8 +146,9 @@ def make_translation(conn, lang):
             coalesce(to_imp.rel_score, 0.001) AS to_importance
         FROM raw.translation
             JOIN lang.entry USING (lexentry)
-            JOIN lang.rel_importance from_imp ON (entry.written_rep = from_imp.vocable)
-            LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.vocable)
+            JOIN lang.rel_importance from_imp USING (vocable)
+            -- TODO: the join condition is an ugly hack, and slow!
+            LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.written_rep_guess)
     """)
 
 
