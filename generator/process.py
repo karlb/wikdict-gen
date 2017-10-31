@@ -69,9 +69,22 @@ def make_entry(conn, lang):
             group_concat(pronun, ' | ') AS pronun_list
         FROM raw.entry
             LEFT JOIN raw.pos USING (lexentry)
-            LEFT JOIN raw.gender USING (lexentry)
+            LEFT JOIN (
+                SELECT lexentry,
+                    CASE
+                        WHEN min(gender) == max(gender) THEN gender
+                    END AS gender
+                FROM raw.gender
+            ) USING (lexentry)
             LEFT JOIN raw.pronun USING (lexentry)
+        -- Actually, I only want to group by lexentry. But by combinding this
+        -- grouping with a unique index, we'll get an error if the result is
+        -- ambiguous.
+        -- TODO: enable this check and resolve the problems
+        --GROUP BY 1, 2, 3,4;
         GROUP BY lexentry;
+        CREATE UNIQUE INDEX entry_pkey ON entry(lexentry);
+
 --        SELECT lexentry, written_rep, choose_pos(part_of_speech) AS part_of_speech,
 --            CASE
 --                WHEN min(gender) == max(gender) THEN gender
@@ -82,7 +95,6 @@ def make_entry(conn, lang):
 --        WHERE written_rep is NOT NULL
 --          AND written_rep != ''
 --        GROUP BY lexentry;
-        CREATE UNIQUE INDEX entry_pkey ON entry(lexentry);
     """)
 
 
