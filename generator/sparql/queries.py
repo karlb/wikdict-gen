@@ -113,7 +113,7 @@ basic_entry_pronun_query = """
     WHERE {
         ?lexentry a ontolex:LexicalEntry ;
                   dct:language lexvo:%(lang3)s ;
-                  ontolex:canonicalForm [lexinfo:pronunciation ?pronun]
+                  ontolex:canonicalForm [ontolex:phoneticRep ?pronun]
     }
 """
 

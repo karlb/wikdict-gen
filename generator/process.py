@@ -75,6 +75,7 @@ def make_entry(conn, lang):
                         WHEN min(gender) == max(gender) THEN gender
                     END AS gender
                 FROM raw.gender
+                GROUP BY lexentry
             ) USING (lexentry)
             LEFT JOIN raw.pronun USING (lexentry)
         -- Actually, I only want to group by lexentry. But by combinding this
