@@ -184,6 +184,12 @@ def update_stats(conn, lang_pair):
     """, [from_lang, to_lang])
 
 
+def vacuum(conn, lang):
+    # workaround for https://github.com/ghaering/pysqlite/issues/109
+    conn.isolation_level = None
+    conn.execute('VACUUM')
+
+
 def do(lang, only, sql, **kwargs):
     if '-' not in lang:
         attach = []
@@ -191,7 +197,7 @@ def do(lang, only, sql, **kwargs):
             ('vocable', make_vocable),
             ('display', make_display),
             ('entry', make_entry),
-            ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
+            ('vacuum', vacuum),
         ]
         in_path = 'processed'
     else:
@@ -207,7 +213,7 @@ def do(lang, only, sql, **kwargs):
             ('translation', make_translation),
             ('simple_translation', make_simple_translation),
             ('search_index', make_search_index),
-            ('vacuum', lambda conn, lang: conn.execute('VACUUM')),
+            ('vacuum', vacuum),
             ('stats', update_stats),
         ]
         in_path = 'generic'
