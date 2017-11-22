@@ -67,8 +67,7 @@ tei_template = """
       <publicationStmt>
         <publisher>Karl Bartel</publisher>
         <availability status="free">
-          <p>Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported license</p>
-          <p>See https://creativecommons.org/licenses/by-sa/3.0/legalcode for details</p>
+          <p>Licensed under the <ref target="https://creativecommons.org/licenses/by-sa/3.0/legalcode">Creative Commons Attribution-ShareAlike 3.0 Unported</ref> license</p>
         </availability>
         <date>{today}</date>
       </publicationStmt>
