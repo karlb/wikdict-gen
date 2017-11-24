@@ -253,9 +253,8 @@ def get_tei_entries_as_xml(from_lang, to_lang):
         )
         headwords += 1
         if headwords % 2000 == 0:
-            print('.')
-        #if headwords == 5000:
-        #    break
+            print('.', end='', flush=True)
+    print()
 
     entries_xml_text = ''.join(entries_xml_text_list)
     return entries_xml_text, headwords
