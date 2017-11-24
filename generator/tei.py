@@ -125,8 +125,9 @@ def list_split(l):
 
 def get_translations(from_lang, to_lang):
     conn = sqlite3.connect(
-        'dictionaries/generic/%s-%s.sqlite3'
-        % (from_lang, to_lang))
+        'file:dictionaries/generic/%s-%s.sqlite3?mode=ro'
+        % (from_lang, to_lang),
+        uri=True)
     conn.row_factory = sqlite3.Row
     conn.execute(
         "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang"
