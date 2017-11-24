@@ -313,7 +313,7 @@ def write_dict_pair(from_lang, to_lang):
 
 def main():
     if len(sys.argv) == 2 and sys.argv[1] == 'all':
-        langs = ('de', 'en', 'sv', 'fr')
+        langs = ('de', 'en', 'sv', 'fr', 'pl', 'fi', 'es', 'da')
         for from_lang, to_lang in permutations(langs, 2):
             write_dict_pair(from_lang, to_lang)
     elif len(sys.argv) == 3:
