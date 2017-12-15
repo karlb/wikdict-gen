@@ -59,7 +59,7 @@ tei_template = """
         <title>{from_name}-{to_name} FreeDict+WikDict dictionary</title>
         <respStmt>
           <resp>Maintainer</resp>
-          <name>Karl Bartel</name>
+          <name xml:id="karlb">Karl Bartel</name>
         </respStmt>
       </titleStmt>
       <editionStmt><edition>{today}</edition></editionStmt>
@@ -106,6 +106,14 @@ tei_template = """
         </namespace>
       </tagsDecl>
     </encodingDesc>
+    <revisionDesc>
+      <change when="2017-12-15" who="#karlb">
+        Add changelog
+      </change>
+      <change when="2017-11-22" who="#karlb">
+        Use ref tag to encode license URL
+      </change>
+    </revisionDesc>
   </teiHeader>
   <text>
     <body xml:lang="{from_lang}">
