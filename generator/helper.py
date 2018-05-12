@@ -5,6 +5,7 @@ from itertools import permutations
 
 supported_langs = [
     'de', 'en', 'fr', 'pl', 'sv', 'es', 'pt', 'fi', 'el', 'ru', 'tr',
+    'bg', 'it', 'ja', 'id', 'nl', 'lt', 'la', 'mg', 'no',
 ]
 
 

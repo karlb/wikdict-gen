@@ -9,6 +9,7 @@ from xml.etree.cElementTree import (
 from collections import OrderedDict
 
 from languages import language_names, language_codes3
+from helper import supported_langs
 
 
 def indent(elem, level=0):
@@ -247,7 +248,7 @@ def get_tei_entries_as_xml(from_lang, to_lang):
     Keeping them as XML objects would use much more memory
     """
     conn = sqlite3.connect(
-        'dictionaries/sqlite/prod/%s.sqlite3'
+        'dictionaries/generic/%s.sqlite3'
         % from_lang)
     conn.row_factory = sqlite3.Row
     entries_xml_text_list = []
@@ -321,8 +322,7 @@ def write_dict_pair(from_lang, to_lang):
 
 def main():
     if len(sys.argv) == 2 and sys.argv[1] == 'all':
-        langs = ('de', 'en', 'sv', 'fr', 'pl', 'fi', 'es', 'da')
-        for from_lang, to_lang in permutations(langs, 2):
+        for from_lang, to_lang in permutations(supported_langs, 2):
             write_dict_pair(from_lang, to_lang)
     elif len(sys.argv) == 3:
         from_lang, to_lang = sys.argv[1:]

@@ -23,7 +23,15 @@ translation_query_type = {
     'el': 'sense',
     'ru': 'sense',
     'tr': 'sense',
-    #'ja': 'gloss',
+    'ja': 'gloss',
+    'bg': 'gloss',
+    'it': 'gloss',
+    'id': 'gloss',
+    'nl': 'gloss',
+    'lt': 'gloss',
+    'la': 'gloss',
+    'mg': 'gloss',
+    'no': 'gloss',
 }
 
 form_query = """
