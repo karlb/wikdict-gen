@@ -13,7 +13,7 @@ ALL_WDWEB_PAIRS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_PAI
 ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LANGS}))
 ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
-all: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
+all: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS} ${ALL_GENERIC} ${ALL_PROCESSED} ${ALL_RAW} check
 raw: ${ALL_RAW}
 processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
@@ -58,3 +58,6 @@ ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlit
 
 extensions:
 	python3 -c "`wget -qO- https://bitbucket.org/!api/2.0/snippets/karlb/j6gxM/38eff66f830e1c96b99e2ebb1312cae13c772c34/files/make_sqlite_ext.py`" lib spellfix icu
+
+check:
+	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!'
