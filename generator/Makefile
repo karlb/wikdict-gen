@@ -60,4 +60,4 @@ extensions:
 	python3 -c "`wget -qO- https://bitbucket.org/!api/2.0/snippets/karlb/j6gxM/38eff66f830e1c96b99e2ebb1312cae13c772c34/files/make_sqlite_ext.py`" lib spellfix icu
 
 check:
-	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!'
+	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
