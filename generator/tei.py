@@ -218,7 +218,7 @@ def single_tei_entry(x, to_lang):
          and x['written_rep'].startswith('-'))
     )
     if is_suffix:
-        assert x['written_rep'].startswith('-')
+        #assert x['written_rep'].startswith('-')
         orth.text = x['written_rep'][1:]
         pos_text = 'suffix'
     else:
@@ -271,9 +271,6 @@ def get_tei_entries_as_xml(from_lang, to_lang):
 
 def write_tei_dict(from_lang, to_lang):
     print(from_lang, to_lang)
-    out_filename = 'dictionaries/tei/{}-{}.tei'.format(
-        language_codes3[from_lang],
-        language_codes3[to_lang])
     pos_usage = ''.join('<item ana="{1}">{0}</item>'.format(*pos)
                         for pos in list(pos_mapping.values()))
 
@@ -305,6 +302,10 @@ def write_tei_dict(from_lang, to_lang):
     )
 
     # write to file and add declarations
+    out_filename = 'dictionaries/tei/{}{}-{}.tei'.format(
+        'small/' if headwords < 10000 else '',
+        language_codes3[from_lang],
+        language_codes3[to_lang])
     with codecs.open(out_filename, 'w', 'utf-8') as out_file:
         out_file.write("""
 <?xml version="1.0" encoding="UTF-8"?>
