@@ -76,7 +76,8 @@ tei_template = """
         <note type="status">{status}</note>
       </notesStmt>
       <sourceDesc>
-        <p>All entries from Wiktionary.org via DBnary</p>
+        <p>Automatic creation of this bilingual by <ref target="http://www.wikdict.com/">WikDict</ref>.</p>
+        <p>Base data from <ref target="https://www.wiktionary.org/">Wiktionary.org</ref> via <ref target="http://kaiko.getalp.org/about-dbnary/">DBnary</ref>.</p>
       </sourceDesc>
     </fileDesc>
     <encodingDesc>
@@ -108,6 +109,9 @@ tei_template = """
       </tagsDecl>
     </encodingDesc>
     <revisionDesc>
+      <change when="2018-05-15" who="#karlb">
+        Add links to sourceDesc
+      </change>
       <change when="2017-12-15" who="#karlb">
         Add changelog
       </change>
