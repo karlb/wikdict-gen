@@ -193,7 +193,7 @@ def add_senses(entry, x, to_lang, is_suffix):
         else:
             sense_attr = {'n': str(i + 1)}
         sense = SubElement(entry, 'sense', sense_attr)
-        if s['gloss'] is not None:
+        if s['gloss']:
             sense_def = SubElement(sense, 'usg', {'type': 'hint'})
             sense_def.text = s['gloss']
 
