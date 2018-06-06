@@ -280,6 +280,8 @@ def write_tei_dict(from_lang, to_lang):
 
     # get entries, this is where most work is done
     entries, headwords = get_tei_entries_as_xml(from_lang, to_lang)
+    if headwords == 0:
+        return
 
     if headwords >= 10000:
         status = 'big enough to be useful'
@@ -307,7 +309,7 @@ def write_tei_dict(from_lang, to_lang):
 
     # write to file and add declarations
     out_filename = 'dictionaries/tei/{}{}-{}.tei'.format(
-        'small/' if headwords < 10000 else '',
+        'small/' if headwords < 5000 else '',
         language_codes3[from_lang],
         language_codes3[to_lang])
     with codecs.open(out_filename, 'w', 'utf-8') as out_file:
