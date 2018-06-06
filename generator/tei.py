@@ -76,7 +76,7 @@ tei_template = """
         <note type="status">{status}</note>
       </notesStmt>
       <sourceDesc>
-        <p>Automatic creation of this bilingual by <ref target="http://www.wikdict.com/">WikDict</ref>.</p>
+        <p>Automatic creation of this bilingual dictionary by <ref target="http://www.wikdict.com/">WikDict</ref>.</p>
         <p>Base data from <ref target="https://www.wiktionary.org/">Wiktionary.org</ref> via <ref target="http://kaiko.getalp.org/about-dbnary/">DBnary</ref>.</p>
       </sourceDesc>
     </fileDesc>
