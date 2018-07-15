@@ -4,8 +4,9 @@ import sqlite3
 import argparse
 import subprocess
 import codecs
-import re
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 import json
 from itertools import groupby
 
@@ -133,20 +134,6 @@ if __name__ == '__main__':
     search.add_argument('to_lang')
     search.add_argument('search_term')
     search.set_defaults(func=search_query)
-
-    complete_lang = subparsers.add_parser('complete_lang')
-    complete_lang.add_argument('langs', nargs='+', metavar='lang')
-    complete_lang.set_defaults(
-        func=lambda langs, **kwargs: make_for_langs(
-            [make_form, make_entry, make_importance, make_prod_single], langs)
-    )
-
-    complete_pair = subparsers.add_parser('complete_pair')
-    complete_pair.add_argument('langs', nargs='+', metavar='lang')
-    complete_pair.set_defaults(
-        func=lambda langs, **kwargs: make_for_lang_permutations(
-            [sparql_run.make_translation, make_prod_pair], langs)
-    )
 
     inter = subparsers.add_parser('interactive')
     inter.add_argument('from_lang')
