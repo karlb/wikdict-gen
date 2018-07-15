@@ -201,6 +201,7 @@ def add_senses(entry, x, to_lang, is_suffix):
         cit = SubElement(sense, 'cit',
                          {'type': 'trans', 'xml:lang': to_lang})
         for trans in s['trans_list']:
+            assert trans, 'empty translation for %r' % x
             quote = SubElement(cit, 'quote')
             if is_suffix:
                 trans = trans[1:]
