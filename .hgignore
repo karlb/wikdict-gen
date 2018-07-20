@@ -7,3 +7,4 @@ syntax: glob
 dictionaries
 virt
 virt.orig
+generator/sitemap/
