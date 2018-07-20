@@ -1,0 +1,1 @@
+echo "SELECT written_rep, replace(trans_list, ' | ', ', ') FROM simple_translation WHERE max_score >= 100 ORDER BY rel_importance DESC LIMIT 100;" | sqlite3 dictionaries/generic/$1.sqlite3 -csv -noheader -separator ";" > $1.csv
