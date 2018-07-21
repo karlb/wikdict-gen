@@ -3,14 +3,6 @@ import os
 import sqlite3
 import argparse
 import subprocess
-import codecs
-import urllib.request
-import urllib.parse
-import urllib.error
-import json
-from itertools import groupby
-
-from helper import make_for_langs, make_for_lang_permutations
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -69,50 +61,6 @@ def attach_dbs(from_lang, to_lang):
     """.format(from_lang=from_lang, to_lang=to_lang)
 
 
-def make_typeahead_single(lang):
-    conn = sqlite3.connect('dictionaries/sqlite/%s.sqlite3' % lang)
-    apply_views(conn, 'single_views.sql')
-
-    rows = conn.execute("""
-        SELECT lower(substr(x, 1, 3)) AS prefix, x, rel_score
-        FROM (
-            SELECT substr(vocable, 5) AS x, rel_score
-            FROM rel_importance
-            WHERE lower(substr(vocable, 5)) IN (
-                SELECT lower(written_rep) FROM entry
-            )
-        )
-        ORDER BY 1, rel_score DESC
-    """)
-
-    # make prefix dir for this language
-    path = os.path.expanduser('~/tools/typeahead2/%s' % lang)
-    try:
-        os.mkdir(path)
-    except OSError:
-        pass
-
-    def save_typeahead(filename, prefix_rows):
-        encoded_prefix = urllib.parse.quote_plus(filename)
-        filename = path + '/' + encoded_prefix + '.json'
-        with codecs.open(filename, 'w', 'utf8') as f:
-            words = [r[1:] for r in prefix_rows]
-            f.write(json.dumps(words))
-
-    # save words to [prefix].txt
-    #singles = []
-    for prefix, prefix_rows in groupby(rows, lambda row: row[0]):
-        if len(prefix) < 3:
-            # print 'Skip short prefix %s' % prefix
-            continue
-        prefix_rows = list(prefix_rows)
-        #if len(prefix_rows) =< 1:
-        #    singles += prefix_rows
-        #    continue
-        save_typeahead(prefix.encode('utf8'), prefix_rows)
-    #save_typeahead('_singles', singles)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='cmd')
@@ -139,13 +87,6 @@ if __name__ == '__main__':
     inter.add_argument('from_lang')
     inter.add_argument('to_lang')
     inter.set_defaults(func=interactive)
-
-    typeahead = subparsers.add_parser('typeahead')
-    typeahead.add_argument('langs', nargs='+', metavar='lang')
-    typeahead.set_defaults(
-        func=lambda lang, **kwargs: make_for_langs(
-            [make_typeahead], lang)
-    )
 
     args = parser.parse_args()
     args.func(**vars(args))
