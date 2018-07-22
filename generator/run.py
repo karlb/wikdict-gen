@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!venv/bin/python3.6
 import os
 import sqlite3
 import argparse

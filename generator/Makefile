@@ -24,12 +24,15 @@ test:
 clean:
 	rm dictionaries/*/*
 
+distclean: clean
+	rm -fr venv
+
 dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 	rm -f dictionaries/infer.sqlite3
 	for langpair in ${ALL_PAIRS}; do ./run.py infer-collect $$langpair; done
 	./run.py infer
 
-${ALL_RAW}: dictionaries/raw/%.sqlite3: 
+${ALL_RAW}: dictionaries/raw/%.sqlite3: venv
 	./run.py raw $*
 
 ${ALL_PROCESSED_LANGS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3
@@ -56,8 +59,9 @@ ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
 ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlite3
 	./run.py wdweb $*
 
-extensions:
-	python3 -c "`wget -qO- https://bitbucket.org/!api/2.0/snippets/karlb/j6gxM/38eff66f830e1c96b99e2ebb1312cae13c772c34/files/make_sqlite_ext.py`" lib spellfix icu
+venv:
+	virtualenv -p python3.6 venv
+	CFLAGS='-DSQLITE_ENABLE_ICU' CPPFLAGS=`icu-config --cppflags` LDFLAGS=`icu-config --ldflags` venv/bin/pip install git+git://github.com/karlb/pysqlite3 --global-option="build_amalgamation"
 
 check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
