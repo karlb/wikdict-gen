@@ -147,6 +147,7 @@ def make_translation(conn, lang):
 
     conn.create_function('parse_sense_num', 1, parse_sense_num)
     conn.create_function('parse_sense', 1, parse_sense_with_lang)
+    conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
     conn.executescript("""
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE translation AS
@@ -154,7 +155,7 @@ def make_translation(conn, lang):
             sense_num AS orig_sense_num,
             parse_sense(sense) AS sense,
             written_rep,
-            trans,
+            clean_wiki_syntax(trans) AS trans,
             from_imp.rel_score AS from_importance,
             coalesce(to_imp.rel_score, 0.001) AS to_importance
         FROM raw.translation
