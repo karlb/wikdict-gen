@@ -62,6 +62,7 @@ ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlit
 venv:
 	virtualenv -p python3.6 venv
 	CFLAGS='-DSQLITE_ENABLE_ICU' CPPFLAGS=`icu-config --cppflags` LDFLAGS=`icu-config --ldflags` venv/bin/pip install git+git://github.com/karlb/pysqlite3
+	venv/bin/pip install -r requirements.txt
 
 check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true

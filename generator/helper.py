@@ -50,15 +50,12 @@ def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None,
     for a in attach:
         conn.execute(
             "ATTACH DATABASE " + a)
-    conn.enable_load_extension(True)
-    conn.load_extension('lib/icu')
 
     if sql:
         cur = conn.cursor()
         cur.execute(sql)
-        print([col[0] for col in cur.description])
-        for row in cur.fetchall():
-            print(row)
+        from tabulate import tabulate
+        print(tabulate(cur, [col[0] for col in cur.description]))
         return
 
     print('%s/%s:' % (out_path, lang), flush=True, end=' ')
