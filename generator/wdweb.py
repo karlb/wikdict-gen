@@ -57,13 +57,13 @@ def make_entry(conn, lang):
 
 
 def make_display(conn, lang):
-    conn.execute("DROP VIEW IF EXISTS main.lexentry_display")
+    conn.execute("DROP TABLE IF EXISTS main.lexentry_display")
     if lang == 'de':
         conn.execute("""
-            CREATE VIEW lexentry_display AS
+            CREATE TABLE lexentry_display AS
             WITH noun AS (
                 SELECT lexentry, other_written, number
-                FROM form
+                FROM processed.form
                 WHERE pos = 'noun'
                     AND "case" = 'Nominative'
                     AND (inflection = 'WeakInflection'
@@ -87,7 +87,7 @@ def make_display(conn, lang):
         """)
     else:
         conn.execute("""
-            CREATE VIEW lexentry_display AS
+            CREATE TABLE lexentry_display AS
             SELECT '' AS lexentry, '' AS display, '' AS display_addition
         """)
 
