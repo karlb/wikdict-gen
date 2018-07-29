@@ -1,6 +1,5 @@
 import os
 import sys
-import sqlite3
 from itertools import permutations
 
 supported_langs = [
@@ -38,14 +37,16 @@ def make_for_lang_permutations(functions, langs, **kwargs):
             func(from_lang, to_lang)
 
 
-def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None, attach=[]):
+def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None,
+                 attach=()):
+    from pysqlite3 import dbapi2 as sqlite3
     if out_path.endswith('.sqlite3'):
         conn = sqlite3.connect('dictionaries/%s' % out_path)
     else:
         os.makedirs('dictionaries/' + out_path, exist_ok=True)
         conn = sqlite3.connect('dictionaries/%s/%s.sqlite3' % (out_path, lang))
     conn.execute("ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
-            % (in_path, lang, in_path))
+                 % (in_path, lang, in_path))
     for a in attach:
         conn.execute(
             "ATTACH DATABASE " + a)

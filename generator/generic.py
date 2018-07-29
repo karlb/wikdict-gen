@@ -64,6 +64,7 @@ def simple_translation(conn, lang):
 
 
 def do(lang, sql, only, **kwargs):
+    assert '-' in lang, 'No generic processing step for single lang'
     from_lang, _ = lang.split('-')
     targets = [
         ('translation', translation),

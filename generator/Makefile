@@ -13,7 +13,7 @@ ALL_WDWEB_PAIRS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_PAI
 ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LANGS}))
 ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
-all: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS} ${ALL_GENERIC} ${ALL_PROCESSED} ${ALL_RAW} check
+all: venv ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS} ${ALL_GENERIC} ${ALL_PROCESSED} ${ALL_RAW} check
 raw: ${ALL_RAW}
 processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
@@ -32,7 +32,7 @@ dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 	for langpair in ${ALL_PAIRS}; do ./run.py infer-collect $$langpair; done
 	./run.py infer
 
-${ALL_RAW}: dictionaries/raw/%.sqlite3: venv
+${ALL_RAW}: dictionaries/raw/%.sqlite3:
 	./run.py raw $*
 
 ${ALL_PROCESSED_LANGS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3
@@ -61,7 +61,7 @@ ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlit
 
 venv:
 	virtualenv -p python3.6 venv
-	CFLAGS='-DSQLITE_ENABLE_ICU' CPPFLAGS=`icu-config --cppflags` LDFLAGS=`icu-config --ldflags` venv/bin/pip install git+git://github.com/karlb/pysqlite3 --global-option="build_amalgamation"
+	CFLAGS='-DSQLITE_ENABLE_ICU' CPPFLAGS=`icu-config --cppflags` LDFLAGS=`icu-config --ldflags` venv/bin/pip install git+git://github.com/karlb/pysqlite3
 
 check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
