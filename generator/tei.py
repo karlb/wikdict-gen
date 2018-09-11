@@ -14,15 +14,15 @@ from helper import supported_langs
 
 def indent(elem, level=0):
     i = "\n" + level * "  "
-    if len(elem):
+    if elem:
         if not elem.text or not elem.text.strip():
             elem.text = i + "  "
         if not elem.tail or not elem.tail.strip():
             elem.tail = i
-        for elem in elem:
-            indent(elem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
+        for e in elem:
+            indent(e, level + 1)
+        if not e.tail or not e.tail.strip():
+            e.tail = i
     else:
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
@@ -132,8 +132,7 @@ tei_template = """
 def list_split(l):
     if l is None:
         return []
-    else:
-        return l.split(' | ')
+    return l.split(' | ')
 
 
 def get_translations(from_lang, to_lang):
