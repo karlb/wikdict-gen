@@ -63,7 +63,7 @@ tei_template = """
           <name xml:id="karlb">Karl Bartel</name>
         </respStmt>
       </titleStmt>
-      <editionStmt><edition>{today}</edition></editionStmt>
+      <editionStmt><edition>{version}</edition></editionStmt>
       <extent>{headwords} headwords</extent>
       <publicationStmt>
         <publisher>Karl Bartel</publisher>
@@ -292,12 +292,14 @@ def write_tei_dict(from_lang, to_lang):
 
     # prepare template
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
+    today = version=datetime.date.today().isoformat()
+    version = today.replace('-', '.')
     tei_template_xml = XML(tei_template.format(
         from_name=language_names[from_lang],
         to_name=language_names[to_lang], headwords=headwords,
         from_lang=from_lang,
-        today=datetime.date.today(), pos_usage=pos_usage,
-        status=status,
+        today=today, version=version,
+        pos_usage=pos_usage, status=status,
     ))
     indent(tei_template_xml)
 
