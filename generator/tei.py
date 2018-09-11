@@ -21,6 +21,7 @@ def indent(elem, level=0):
             elem.tail = i
         for e in elem:
             indent(e, level + 1)
+        # pylint: disable=undefined-loop-variable
         if not e.tail or not e.tail.strip():
             e.tail = i
     else:
@@ -292,7 +293,7 @@ def write_tei_dict(from_lang, to_lang):
 
     # prepare template
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
-    today = version=datetime.date.today().isoformat()
+    today = datetime.date.today().isoformat()
     version = today.replace('-', '.')
     tei_template_xml = XML(tei_template.format(
         from_name=language_names[from_lang],
