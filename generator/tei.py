@@ -109,6 +109,9 @@ tei_template = """
       </tagsDecl>
     </encodingDesc>
     <revisionDesc>
+      <change when="2018-09-12" who="#karlb">
+        Change numbering scheme from YYYY-MM-DD to YYYY.MM.DD
+      </change>
       <change when="2018-05-15" who="#karlb">
         Add links to sourceDesc
       </change>
