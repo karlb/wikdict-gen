@@ -14,15 +14,16 @@ from helper import supported_langs
 
 def indent(elem, level=0):
     i = "\n" + level * "  "
-    if len(elem):
+    if elem:
         if not elem.text or not elem.text.strip():
             elem.text = i + "  "
         if not elem.tail or not elem.tail.strip():
             elem.tail = i
-        for elem in elem:
-            indent(elem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
+        for e in elem:
+            indent(e, level + 1)
+        # pylint: disable=undefined-loop-variable
+        if not e.tail or not e.tail.strip():
+            e.tail = i
     else:
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
@@ -63,7 +64,7 @@ tei_template = """
           <name xml:id="karlb">Karl Bartel</name>
         </respStmt>
       </titleStmt>
-      <editionStmt><edition>{today}</edition></editionStmt>
+      <editionStmt><edition>{version}</edition></editionStmt>
       <extent>{headwords} headwords</extent>
       <publicationStmt>
         <publisher>Karl Bartel</publisher>
@@ -135,8 +136,7 @@ tei_template = """
 def list_split(l):
     if l is None:
         return []
-    else:
-        return l.split(' | ')
+    return l.split(' | ')
 
 
 def get_translations(from_lang, to_lang):
@@ -296,12 +296,14 @@ def write_tei_dict(from_lang, to_lang):
 
     # prepare template
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
+    today = datetime.date.today().isoformat()
+    version = today.replace('-', '.')
     tei_template_xml = XML(tei_template.format(
         from_name=language_names[from_lang],
         to_name=language_names[to_lang], headwords=headwords,
         from_lang=from_lang,
-        today=datetime.date.today(), pos_usage=pos_usage,
-        status=status,
+        today=today, version=version,
+        pos_usage=pos_usage, status=status,
     ))
     indent(tei_template_xml)
 

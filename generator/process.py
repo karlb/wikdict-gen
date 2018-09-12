@@ -148,22 +148,31 @@ def make_translation(conn, lang):
     conn.create_function('parse_sense_num', 1, parse_sense_num)
     conn.create_function('parse_sense', 1, parse_sense_with_lang)
     conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
+    # The outer query removes duplicates in the case of different lexentries
+    # with the same translation and sense. E.g. for transitive and intransitive
+    # variants of a vocable which both map to the same translation.
     conn.executescript("""
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE translation AS
-        SELECT lexentry, parse_sense_num(sense_num) AS sense_num,
-            sense_num AS orig_sense_num,
-            parse_sense(sense) AS sense,
-            written_rep,
-            clean_wiki_syntax(trans) AS trans,
-            from_imp.rel_score AS from_importance,
-            coalesce(to_imp.rel_score, 0.001) AS to_importance
-        FROM raw.translation
-            JOIN lang.entry USING (lexentry)
-            JOIN lang.rel_importance from_imp USING (vocable)
-            -- TODO: the join condition is an ugly hack, and slow!
-            LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.written_rep_guess)
-        WHERE trans != ''
+        SELECT min(lexentry) AS lexentry, sense_num, sense, written_rep, trans,
+            max(from_importance) AS from_importance, max(to_importance) AS to_importance,
+            json_group_array(lexentry) AS all_lexentries
+        FROM (
+            SELECT lexentry, parse_sense_num(sense_num) AS sense_num,
+                sense_num AS orig_sense_num,
+                parse_sense(sense) AS sense,
+                written_rep,
+                clean_wiki_syntax(trans) AS trans,
+                from_imp.rel_score AS from_importance,
+                coalesce(to_imp.rel_score, 0.001) AS to_importance
+            FROM raw.translation
+                JOIN lang.entry USING (lexentry)
+                JOIN lang.rel_importance from_imp USING (vocable)
+                -- TODO: the join condition is an ugly hack, and slow!
+                LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.written_rep_guess)
+            WHERE trans != ''
+        )
+        GROUP BY sense_num, sense, written_rep, trans;
     """)
 
 
