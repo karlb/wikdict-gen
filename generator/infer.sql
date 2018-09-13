@@ -106,7 +106,7 @@ SELECT * FROM (
 
 DROP TABLE IF EXISTS infer;
 CREATE TABLE infer AS
-SELECT from_lang, to_lang, lexentry, sense_num, sense,
+SELECT from_lang, to_lang, lexentry, sense_num, nullif(sense, '') AS sense,
     from_vocable, to_vocable,
     group_concat(source) AS sources,
     group_concat(source_detail) AS source_details,
