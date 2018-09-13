@@ -170,8 +170,8 @@ def make_translation(conn, lang):
                 JOIN lang.rel_importance from_imp USING (vocable)
                 -- TODO: the join condition is an ugly hack, and slow!
                 LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.written_rep_guess)
-            WHERE trans != ''
         )
+        WHERE trans != ''
         GROUP BY sense_num, sense, written_rep, trans;
     """)
 
