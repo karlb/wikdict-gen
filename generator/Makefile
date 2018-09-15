@@ -66,3 +66,16 @@ venv:
 
 check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
+
+release-web:
+	rsync -avz --progress -e ssh dictionaries/wdweb/ www.wikdict.com:wikdict-prod/data/$(shell date +%Y-%m)
+	#scp -rC dictionaries/wdweb/ www.wikdict.com:wikdict-prod/data/$(shell date +%Y-%m)
+	ssh www.wikdict.com ln -sfT $(shell date +%Y-%m) wikdict-prod/data/dict
+
+release-download:
+	rsync -avz --progress -e ssh dictionaries/generic www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
+	rsync -avz --progress -e ssh dictionaries/processed/??.sqlite3 www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
+	ssh www.wikdict.com ln -sfT 2_$(shell date +%Y-%m) hosts/download/dictionaries/sqlite/2
+
+release-tei:
+	rsync -avz --progress -e ssh dictionaries/tei/* www.wikdict.com:hosts/download/dictionaries/tei/recommended
