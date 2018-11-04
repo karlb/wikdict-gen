@@ -205,7 +205,7 @@ def add_senses(entry, x, to_lang, is_suffix):
         for s in subsenses:
             if s['gloss']:
                 subsense = SubElement(sense, 'sense')
-                sense_def = SubElement(subsense, 'usg', {'type': 'hint'})
+                sense_def = SubElement(subsense, 'def')
                 sense_def.text = s['gloss']
 
 
