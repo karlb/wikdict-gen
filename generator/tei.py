@@ -188,27 +188,26 @@ def get_translations(from_lang, to_lang):
 
 
 def add_senses(entry, x, to_lang, is_suffix):
-    # sense
-    for i, s in enumerate(x['senses']):
-        if len(x['senses']) == 1:
-            # skip numbering senses if we only have a single one
-            sense_attr = {}
-        else:
-            sense_attr = {'n': str(i + 1)}
-        sense = SubElement(entry, 'sense', sense_attr)
-        if s['gloss']:
-            sense_def = SubElement(sense, 'usg', {'type': 'hint'})
-            sense_def.text = s['gloss']
-
+    groups = groupby(x['senses'], lambda s: (s['trans_list']))
+    for trans_list, subsenses in groups:
+        sense = SubElement(entry, 'sense')
         # translation
         cit = SubElement(sense, 'cit',
                          {'type': 'trans', 'xml:lang': to_lang})
-        for trans in s['trans_list']:
+        for trans in trans_list:
             assert trans, 'empty translation for %r' % x
             quote = SubElement(cit, 'quote')
             if is_suffix:
                 trans = trans[1:]
             quote.text = trans
+
+        # subsenses
+        for s in subsenses:
+            if s['gloss']:
+                subsense = SubElement(sense, 'sense')
+                sense_def = SubElement(subsense, 'usg', {'type': 'hint'})
+                sense_def.text = s['gloss']
+
 
 
 def single_tei_entry(x, to_lang):
