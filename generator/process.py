@@ -100,10 +100,14 @@ def make_entry(conn, lang):
 
 
 def make_form(conn, lang):
+    conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
+    conn.create_function('clean_html', 1, parse.html_parser.parse)
     conn.executescript("""
         DROP TABLE IF EXISTS main.form;
         CREATE TABLE form AS
-        SELECT *
+        SELECT lexentry,
+            clean_wiki_syntax(clean_html(other_written)) AS other_written,
+            "case", number, inflection, pos
         FROM raw.form
     """)
 
