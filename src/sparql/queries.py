@@ -263,7 +263,7 @@ def page_through_results(query, limit, **kwargs):
 
 
 def create_table(conn, table_name, first_result=None):
-    sql_filename = 'sql/sparql/{}.sql'.format(table_name)
+    sql_filename = 'src/sql/sparql/{}.sql'.format(table_name)
     if first_result:
         sql_types = {
             'http://www.w3.org/2001/XMLSchema#integer': 'int',

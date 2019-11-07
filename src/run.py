@@ -1,4 +1,4 @@
-#!venv/bin/python3.6
+#!venv/bin/python
 import os
 import argparse
 import subprocess

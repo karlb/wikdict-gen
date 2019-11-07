@@ -8,4 +8,4 @@ dictionaries
 virt
 virt.orig
 generator/sitemap/
-generator/venv/
+venv
