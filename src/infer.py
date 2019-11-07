@@ -54,7 +54,7 @@ class AggByScore:
 def infer(**kwargs):
     conn = sqlite3.connect('dictionaries/infer.sqlite3')
     conn.create_aggregate("agg_by_score", 2, AggByScore)
-    conn.executescript(open('infer.sql').read())
+    conn.executescript(open('src/infer.sql').read())
 
 
 def do(lang, sql, **kwargs):

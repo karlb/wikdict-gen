@@ -8,7 +8,7 @@ TOKENIZER = defaultdict(lambda: 'unicode61', {
 })
 
 
-def apply_views(conn, view_file='views.sql'):
+def apply_views(conn, view_file='src/views.sql'):
     with open(view_file) as f:
         f.readline()  # skip first line
         conn.executescript(f.read())
