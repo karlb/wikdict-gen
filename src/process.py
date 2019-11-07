@@ -117,13 +117,15 @@ def make_importance(conn, lang):
         DROP TABLE IF EXISTS main.importance;
         CREATE TABLE importance AS
         -- The input data should already be distinct, but Virtuoso fails to do
-        -- a proper GROUP BY for some texts like 'eng/??'
-        SELECT DISTINCT vocable, score,
+        -- a proper GROUP BY for some texts like 'eng/??', so we need to group
+        -- here, again.
+        SELECT vocable, avg(score) AS score,
            -- TODO: This is an ugly hack. A vocable/page does not have a single
            --       representation. Case might be different, probably other
            --       things, too.
            replace(substr(vocable, 5), '_', ' ') AS written_rep_guess
-        FROM raw.importance;
+        FROM raw.importance
+        GROUP BY vocable;
         CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
 
         -- When searching in two languages, the more popular one will have
