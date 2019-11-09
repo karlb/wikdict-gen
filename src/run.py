@@ -9,24 +9,21 @@ BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 def search_query(from_lang, to_lang, search_term, **kwargs):
     conn = sqlite3.connect(
-        'dictionaries/sqlite/prod/%s-%s.sqlite3'
+        'dictionaries/wdweb/%s-%s.sqlite3'
         % (from_lang, to_lang))
     for r in conn.execute("""
-                SELECT * FROM (
-                    SELECT lexentry, written_rep, sense_list, trans_list
-                    FROM (
-                            SELECT DISTINCT lexentry
-                            FROM search_trans
-                            WHERE form MATCH ?
-                        )
-                        JOIN translation USING (lexentry)
-                    ORDER BY translation.rowid
-                )
-                UNION ALL
-                SELECT NULL, written_rep, NULL, trans_list
-                FROM search_reverse_trans
-                WHERE written_rep MATCH ?
-            """, [search_term, search_term]):
+                SELECT lexentry, written_rep, sense_list, trans_list
+                FROM (
+                        SELECT DISTINCT written_rep
+                        FROM search_trans
+                        WHERE form MATCH :term
+                    )
+                    JOIN translation USING (written_rep)
+                ORDER BY
+                    lower(written_rep) LIKE '%'|| lower(:term) ||'%' DESC, length(written_rep),
+                    lexentry, coalesce(min_sense_num, '99'), importance * translation_score DESC
+                LIMIT 100
+            """, dict(term=search_term)):
         print('%-40s %-20s %-80s %s' % r)
 
 
