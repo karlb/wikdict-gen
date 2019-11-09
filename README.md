@@ -1,21 +1,30 @@
 # WikDict dictionary generator
 
-This generator extracts data from a virtuoso database filled with [dbnary] data. Details on how to set up such a database can be found in the [wikdict-virtuoso repository][wd-virt], or you can [ask me][mail] for access to a running server. The extracted data is then used to generate WikDict dictionaries. Currently, these dictionaries are only used by the [WikDict website][wikdict.com].
+This generator extracts data from a Virtuoso database filled with [dbnary]
+data. Details on how to set up such a database can be found in the [virtuoso
+directory](virtuoso). The extracted data is then used to generate WikDict
+dictionaries. These dictionaries main usage is at the [WikDict
+website][wikdict.com].
 
-[dbnary]: kaiko.getalp.org/about-dbnary/
-[wd-virt]: https://bitbucket.org/wikdict/wikdict-virtuoso
+[dbnary]: http://kaiko.getalp.org/about-dbnary/
 [wikdict.com]: http://www.wikdict.com
-[mail]: karl42@gmail.com
 
 # Usage
+  
+After setting up the Virtuoso database, run
 
-    hg clone https://bitbucket.org/wikdict/wikdict-gen
-    cd wikdict-gen/generator
-    ./run.py complete_lang all 
-    ./run.py complete_pair all
+    git clone git@github.com:karlb/wikdict-gen.git
+    cd wikdict-gen
+    make
 
-Use the resulting dictionaries in `dictionaries/sqlite/prod` with [wikdict-web], or try a quick lookup using the `search` command like
+Use the resulting dictionaries in `dictionaries/wdweb` with [wikdict-web], try a quick lookup using the `search` command like
 
-    ./run.py search de en haus
+    src/run.py search de en haus
 
-[wikdict-web]: https://bitbucket.org/wikdict/wikdict-web
+or use the dictionaries in `dictionaries/generic` for any other use case.
+
+[wikdict-web]: https://github.com/karlb/wikdict-web
+
+# Support
+
+If you encounter problems when building or using dictionaries, please [submit an issue](https://github.com/karlb/wikdict-web/issues) or contact [karl@karl.berlin](mailto:karl@karl.berlin).
