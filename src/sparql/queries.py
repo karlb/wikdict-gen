@@ -35,17 +35,25 @@ translation_query_type = {
 }
 
 form_query = """
-    SELECT ?lexentry ?other_written ?case ?number ?inflection ?pos
+    SELECT ?lexentry ?other_written ?pos
+        ?mood ?number ?person ?tense ?voice  # important for verbs
+        ?case ?inflection
     WHERE {
         ?lexentry a ontolex:LexicalEntry ;
                   dct:language lexvo:%(lang3)s ;
                   ontolex:otherForm ?other_form .
 
         ?other_form ontolex:writtenRep ?other_written .
-        OPTIONAL { ?other_form olia:hasCase ?case }
-        OPTIONAL { ?other_form olia:hasNumber ?number }
-        OPTIONAL { ?other_form olia:hasInflectionType ?inflection }
         OPTIONAL { ?lexentry lexinfo:partOfSpeech ?pos }
+
+        OPTIONAL { ?other_form olia:hasMood ?mood }
+        OPTIONAL { ?other_form olia:hasNumber ?number }
+        OPTIONAL { ?other_form olia:hasPerson ?person }
+        OPTIONAL { ?other_form olia:hasTense ?tense }
+        OPTIONAL { ?other_form olia:hasVoice ?voice }
+
+        OPTIONAL { ?other_form olia:hasCase ?case }
+        OPTIONAL { ?other_form olia:hasInflectionType ?inflection }
     }
 """
 

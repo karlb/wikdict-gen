@@ -107,7 +107,9 @@ def make_form(conn, lang):
         CREATE TABLE form AS
         SELECT lexentry,
             clean_wiki_syntax(clean_html(other_written)) AS other_written,
-            "case", number, inflection, pos
+            pos,
+            mood, number, person, tense, voice,
+            "case", inflection
         FROM raw.form
     """)
 
