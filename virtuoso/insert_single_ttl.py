@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import os
 from glob import glob
@@ -15,13 +15,13 @@ bz2_files = (
     glob(language_codes3[lang] + '_*.ttl.bz2')
 )
 for infile in bz2_files:
-    print infile
+    print(infile)
     outfile = infile.replace('.bz2', '.gz')
     cmd = 'bzcat {} | gzip > {}'.format(infile, outfile)
     check_call(cmd, shell=True)
 
 # call isql to do the actual loading
-print 'load ' + lang
+print('load ' + lang)
 isql_code = """
     -- remove old prefix dcterms, since we want to bind it to 'dct', now (same as kaiko.getalp.org)
     DB.DBA.XML_REMOVE_NS_BY_PREFIX('dcterms', 2);
@@ -67,8 +67,8 @@ isql_code = """
 """ % dict(lang=lang, lang3=language_codes3[lang], dir='/ttl')
 p = Popen(('docker exec -i wikdict-virtuoso isql-v'
           ).split(' '), stdin=PIPE)
-p.communicate(input=isql_code)
+p.communicate(input=bytes(isql_code, encoding='utf8'))
 if p.returncode:
-    print 'isql failed'
+    print('isql failed')
 else:
-    print 'success'
+    print('success')
