@@ -37,7 +37,7 @@ translation_query_type = {
 form_query = """
     SELECT ?lexentry ?other_written ?pos
         ?mood ?number ?person ?tense ?voice  # important for verbs
-        ?case ?inflection
+        ?case ?inflection ?definiteness ?gender
     WHERE {
         ?lexentry a ontolex:LexicalEntry ;
                   dct:language lexvo:%(lang3)s ;
@@ -54,6 +54,8 @@ form_query = """
 
         OPTIONAL { ?other_form olia:hasCase ?case }
         OPTIONAL { ?other_form olia:hasInflectionType ?inflection }
+        OPTIONAL { ?other_form olia:hasDefiniteness ?definiteness }
+        OPTIONAL { ?other_form olia:hasGender ?gender }
     }
 """
 
