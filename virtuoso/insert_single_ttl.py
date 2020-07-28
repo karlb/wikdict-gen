@@ -9,17 +9,6 @@ from languages import language_codes3
 os.chdir('ttl')
 lang = sys.argv[1]
 
-# bz2 to gzip, because virtuoso can only load gz
-bz2_files = (
-    glob(lang + '_*.ttl.bz2') +
-    glob(language_codes3[lang] + '_*.ttl.bz2')
-)
-for infile in bz2_files:
-    print(infile)
-    outfile = infile.replace('.bz2', '.gz')
-    cmd = 'bzcat {} | gzip > {}'.format(infile, outfile)
-    check_call(cmd, shell=True)
-
 # call isql to do the actual loading
 print('load ' + lang)
 isql_code = """
@@ -70,5 +59,6 @@ p = Popen(('docker exec -i wikdict-virtuoso isql-v'
 p.communicate(input=bytes(isql_code, encoding='utf8'))
 if p.returncode:
     print('isql failed')
+    exit(1)
 else:
     print('success')
