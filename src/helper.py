@@ -1,6 +1,7 @@
 import os
 import sys
 from itertools import permutations
+from languages import language_codes3
 
 supported_langs = [
     'de', 'en', 'fr', 'pl', 'sv', 'es', 'pt', 'fi', 'el', 'ru', 'tr',
@@ -75,5 +76,15 @@ if __name__ == '__main__':
         ))
     elif sys.argv[1] == 'all_langs':
         print(' '.join(supported_langs))
+    elif sys.argv[1] == 'makefile':
+        for from_lang, to_lang in permutations(supported_langs, 2):
+            print('dictionaries/kobo/dicthtml-{}.zip: dictionaries/tei/{}.tei'.format(
+                from_lang + '-' + to_lang,
+                language_codes3[from_lang] + '-' + language_codes3[to_lang],
+            ))
+            print('dictionaries/stardict/wikdict-{}: dictionaries/tei/{}.tei'.format(
+                from_lang + '-' + to_lang,
+                language_codes3[from_lang] + '-' + language_codes3[to_lang],
+            ))
     else:
         print('Unknwn command %s' % sys.argv[1])

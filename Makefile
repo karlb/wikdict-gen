@@ -1,3 +1,4 @@
+include generated.mk
 
 .PHONY: test extensions
 .SECONDARY:  # keep intermediate files
@@ -13,10 +14,11 @@ ALL_WDWEB_PAIRS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_PAI
 ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LANGS}))
 ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
-all: venv ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS} ${ALL_GENERIC} ${ALL_PROCESSED} ${ALL_RAW} check
+all: venv wdweb check
 raw: ${ALL_RAW}
 processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
+wdweb: ${ALL_WDWEB_LANGS} ${ALL_WDWEB_PAIRS}
 
 test:
 	python3 -m unittest tests.test_parse tests.test_infer
@@ -80,3 +82,18 @@ release-download:
 
 release-tei:
 	rsync -avz --progress -e ssh dictionaries/tei/* www.wikdict.com:hosts/download/dictionaries/tei/recommended
+
+dictionaries/kobo/dicthtml-%.zip: 
+	pyglossary $< $@ --write-format Kobo
+dictionaries/stardict/%.zip: dictionaries/stardict/%
+	cd $</.. && zip -r `basename $@` `basename $<`
+dictionaries/stardict/%: 
+	mkdir -p $@ 
+	pyglossary $< $@/stardict --write-format Stardict
+
+kobo: $(shell grep kobo/dicthtml generated.mk | cut -d: -f1)
+stardict: $(shell grep stardict generated.mk | awk -F ':' '{print $$1 ".zip"}')
+
+release-converted:
+	rsync -avz --progress -e ssh dictionaries/kobo/*.zip www.wikdict.com:hosts/download/dictionaries/kobo
+	rsync -avz --progress -e ssh dictionaries/stardict/*.zip www.wikdict.com:hosts/download/dictionaries/stardict
