@@ -61,6 +61,13 @@ def parse_sense(sense, lang):
 
 
 def make_entry(conn, lang):
+    if lang == 'sv':
+        # Swedish has the gende attributed to the forms. Fill the gender table from there.
+        conn.executescript("""
+            DROP TABLE main.gender
+            CREATE TABLE main.gender AS SELECT DISTINCT lexentry, gender FROM raw.form;
+        """);
+
     conn.create_aggregate("choose_pos", 1, PartOfSpeechChooser)
     conn.executescript("""
         DROP TABLE IF EXISTS main.entry;
@@ -74,7 +81,7 @@ def make_entry(conn, lang):
                     CASE
                         WHEN min(gender) == max(gender) THEN gender
                     END AS gender
-                FROM raw.gender
+                FROM gender
                 GROUP BY lexentry
             ) USING (lexentry)
             LEFT JOIN raw.pronun USING (lexentry)
