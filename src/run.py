@@ -59,6 +59,8 @@ def attach_dbs(from_lang, to_lang):
 
 
 if __name__ == '__main__':
+    sqlite3.enable_callback_tracebacks(True) 
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='cmd')
     subparsers.required = True
