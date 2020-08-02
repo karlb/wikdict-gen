@@ -27,22 +27,8 @@ def search_query(from_lang, to_lang, search_term, **kwargs):
         print('%-40s %-20s %-80s %s' % r)
 
 
-def interactive(from_lang, to_lang, **kwargs):
-    with open('/tmp/attach_dbs.sql', 'w') as f:
-        f.write(attach_dbs(from_lang, to_lang))
-        f.write('\n.read ' + BASE_PATH + '/views.sql\n')
-        f.write('.headers on\n.mode column\n.load lib/spellfix1')
-    subprocess.check_call(
-        #'sqlite3 '
-        '/usr/local/Cellar/sqlite/3.8.10.2/bin/sqlite3 '
-        '-init /tmp/attach_dbs.sql dictionaries/sqlite/%s.sqlite3' % from_lang,
-        shell=True)
-    #p = subprocess.Popen(['sqlite3', '-interactive'], stdin=subprocess.PIPE)
-    #p.communicate(script)
-
-
 def attach_dbs(from_lang, to_lang):
-    main_db_filename = 'dictionaries/sqlite/prod/wikdict.sqlite3'
+    main_db_filename = 'dictionaries/wdweb/wikdict.sqlite3'
     if not os.path.isfile(main_db_filename):
         conn = sqlite3.connect(main_db_filename)
         with open('main.sql') as f:
@@ -81,11 +67,6 @@ if __name__ == '__main__':
     search.add_argument('to_lang')
     search.add_argument('search_term')
     search.set_defaults(func=search_query)
-
-    inter = subparsers.add_parser('interactive')
-    inter.add_argument('from_lang')
-    inter.add_argument('to_lang')
-    inter.set_defaults(func=interactive)
 
     args = parser.parse_args()
     args.func(**vars(args))
