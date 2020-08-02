@@ -51,6 +51,8 @@ gender_mapping = {
     'feminine': 'fem',
     'masculine': 'masc',
     'neuter': 'neut',
+    'Neuter': 'neut',
+    'CommonGender': 'ut',
 }
 
 
