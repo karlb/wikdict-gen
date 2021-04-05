@@ -10,7 +10,7 @@ gzip: $(patsubst ttl/%.bz2,ttl/%.gz,$(wildcard ttl/*.bz2))
 ttl/%.gz: ttl/%.bz2
 	bzcat $< | gzip > $@
 
-ttl/%.inserted:
+ttl/%.inserted: ttl/%_dbnary_ontolex.ttl.gz
 	./insert_single_ttl.py $*
 	touch $@
 
