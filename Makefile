@@ -1,3 +1,4 @@
+# Update with `python3 src/helper.py makefile > generated.mk`
 include generated.mk
 
 .PHONY: test extensions
@@ -80,7 +81,7 @@ release-sitemap:
 
 
 release-download:
-	rsync -avz --progress -e ssh dictionaries/generic www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
+	rsync -avz --progress -e ssh dictionaries/generic/ www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
 	rsync -avz --progress -e ssh dictionaries/processed/??.sqlite3 www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
 	ssh www.wikdict.com ln -sfT 2_$(shell date +%Y-%m) hosts/download/dictionaries/sqlite/2
 
@@ -91,7 +92,7 @@ dictionaries/kobo/dicthtml-%.zip:
 	pyglossary $< $@ --write-format Kobo
 dictionaries/stardict/%.zip: dictionaries/stardict/%
 	cd $</.. && zip -r `basename $@` `basename $<`
-dictionaries/stardict/%: 
+dictionaries/stardict/%:
 	mkdir -p $@ 
 	pyglossary $< $@/stardict --write-format Stardict
 
