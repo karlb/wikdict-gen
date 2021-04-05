@@ -20,7 +20,7 @@ translation_query_type = {
     'es': 'sense',
     'pt': 'gloss',
     'fi': 'sense',
-    'el': 'sense',
+    'el': 'gloss',
     'ru': 'sense',
     'tr': 'sense',
     'ja': 'gloss',
