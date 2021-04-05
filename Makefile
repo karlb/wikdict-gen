@@ -75,6 +75,10 @@ release-web:
 	#scp -rC dictionaries/wdweb/ www.wikdict.com:wikdict-prod/data/$(shell date +%Y-%m)
 	ssh www.wikdict.com ln -sfT $(shell date +%Y-%m) wikdict-prod/data/dict
 
+release-sitemap:
+	rsync -avz --progress -e ssh sitemap www.wikdict.com:wikdict-prod/static
+
+
 release-download:
 	rsync -avz --progress -e ssh dictionaries/generic www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
 	rsync -avz --progress -e ssh dictionaries/processed/??.sqlite3 www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)

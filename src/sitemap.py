@@ -22,17 +22,18 @@ sitemap_index_tmpl = """
 
 def make_sitemap(pair, lang):
     cur = sqlite3.connect('dictionaries/processed/%s.sqlite3' % lang).cursor()
-    cur.execute('SELECT vocable FROM importance ORDER BY score DESC LIMIT 1000')
+    cur.execute('SELECT vocable FROM importance ORDER BY score DESC LIMIT 100')
+    sorted_pair = '-'.join(sorted(pair.split('-')))
     urls = ''.join(
         '''
         <url>
             <loc>https://www.wikdict.com/{}/{}</loc>
             <changefreq>monthly</changefreq>
         </url>
-        '''.format(pair, vocable)
+        '''.format(sorted_pair, vocable.split('/')[1])
         for (vocable,) in cur
     )
-    filename = 'sitemap/{}-{}.xml'.format(pair, lang)
+    filename = 'sitemap/{}.xml'.format(pair)
     with open(filename, 'w') as f:
         f.write(sitemap_tmpl.format(urls))
     return filename
