@@ -8,12 +8,6 @@ TOKENIZER = defaultdict(lambda: 'unicode61', {
 })
 
 
-def apply_views(conn, view_file='src/views.sql'):
-    with open(view_file) as f:
-        f.readline()  # skip first line
-        conn.executescript(f.read())
-
-
 def make_vocable(conn, lang):
     conn.executescript("""
         DROP TABLE IF EXISTS main.vocable;
@@ -93,7 +87,6 @@ def make_display(conn, lang):
 
 
 def make_translation(conn, lang_pair):
-    apply_views(conn)
     conn.executescript("""
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE main.translation AS
