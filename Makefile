@@ -22,7 +22,7 @@ generic: ${ALL_GENERIC}
 wdweb: ${ALL_WDWEB_LANGS} ${ALL_WDWEB_PAIRS}
 
 test:
-	python3 -m unittest tests.test_parse tests.test_infer
+	python3 -m unittest discover -s src
 
 clean:
 	rm dictionaries/*/*
