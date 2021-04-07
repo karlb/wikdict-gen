@@ -3,7 +3,8 @@
 # pylint: disable=line-too-long
 import unittest
 
-from parse import html_parser, clean_wiki_syntax, is_dummy_sense
+import sys
+from parse import html_parser, clean_wiki_syntax, is_dummy_sense, make_conjugation_cleaner
 
 
 class TestParseHTML(unittest.TestCase):
@@ -79,6 +80,13 @@ class TestParseCleanup(unittest.TestCase):
         self.assertEqual(
             clean_wiki_syntax("Saillir une femelle (la féconder).|9 {{trans|nocat=1"),
             "Saillir une femelle (la féconder).")
+
+
+class TestCleanConjugation(unittest.TestCase):
+
+    def test_de(self):
+        cleaner = make_conjugation_cleaner('de')
+        self.assertEqual(cleaner('er/sie/es geht'), 'geht')
 
 
 if __name__ == '__main__':
