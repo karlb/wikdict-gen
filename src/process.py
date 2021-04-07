@@ -6,6 +6,35 @@ import parse
 sense_num_re = re.compile(r'(\d+)(\w)?')
 
 
+CONJUGATION_TABLES = {
+    'de': """
+        INSERT INTO conjugation_table (rank, mood, number, person, tense, voice) VALUES
+            (1, 'IndicativeMood', 'Singular', 'First', 'Present', 'ActiveVoice'),
+            (2, 'IndicativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
+            (3, 'IndicativeMood', 'Singular', 'Third', 'Present', 'ActiveVoice'),
+            (4, 'IndicativeMood', 'Singular', 'First', 'Past', 'ActiveVoice'),
+            (5, 'SubjunctiveMood', 'Singular', 'First', 'Past', 'ActiveVoice'),
+            (6, 'ImperativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
+            (7, 'ImperativeMood', 'Plural', 'Second', 'Present', 'ActiveVoice'),
+            (8, 'IndicativeMood', 'Singular', 'First', 'Perfect', 'ActiveVoice');
+    """,
+    'en': """
+        INSERT INTO conjugation_table (rank, mood, number, person, tense) VALUES
+            -- (1, NULL, 'Singular', 'Third', 'Present'),
+            -- (2, 'Participle', NULL, NULL, 'Present'),
+            (3, NULL, NULL, NULL, 'Past'),
+            (4, 'Participle', NULL , NULL, 'Past');
+    """,
+    'sv': """
+        INSERT INTO conjugation_table (rank, mood, tense, voice, tense_name) VALUES
+            (1, NULL, 'Past', 'ActiveVoice', 'Preteritum'),
+            (2, NULL, 'Supine', 'ActiveVoice', 'Supinum'),
+            (3, 'ImperativeMood', NULL, 'ActiveVoice', 'Imperativ'),
+            (4, NULL, 'Present', 'ActiveVoice', 'Presens');
+    """
+}
+
+
 class PartOfSpeechChooser:
 
     def __init__(self):
@@ -109,15 +138,27 @@ def make_entry(conn, lang):
 def make_form(conn, lang):
     conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
     conn.create_function('clean_html', 1, parse.html_parser.parse)
+    conn.create_function('clean_conjugation', 1, parse.make_conjugation_cleaner(lang))
     conn.executescript("""
         DROP TABLE IF EXISTS main.form;
         CREATE TABLE form AS
-        SELECT lexentry,
-            clean_wiki_syntax(clean_html(other_written)) AS other_written,
-            pos,
-            mood, number, person, tense, voice,
-            "case", inflection
-        FROM raw.form
+        SELECT *,
+            clean_conjugation(other_written_full) AS other_written
+        FROM (
+            SELECT lexentry,
+                clean_wiki_syntax(clean_html(other_written)) AS other_written_full,
+                pos,
+                form.mood, form.number, form.person, form.tense, form.voice,
+                "case", inflection, c.rank
+            FROM raw.form
+                LEFT JOIN conjugation_table c ON (
+                    form.mood IS c.mood
+                    AND form.number IS c.number
+                    AND form.person IS c.person
+                    AND form.tense IS c.tense
+                    AND form.voice IS c.voice
+                )
+        )
     """)
 
 
@@ -191,10 +232,22 @@ def make_translation(conn, lang):
     """)
 
 
+def make_conjugation_table(conn, lang):
+    conn.executescript("""
+        DROP TABLE IF EXISTS conjugation_table;
+        CREATE TABLE conjugation_table(
+            rank, mood, number, person, tense, voice, tense_name);
+    """)
+
+    if lang in CONJUGATION_TABLES:
+        conn.executescript(CONJUGATION_TABLES[lang])
+
+
 def do(lang, only, sql, **kwargs):
     if '-' not in lang:
         targets = [
             ('entry', make_entry),
+            ('conjugation_table', make_conjugation_table),
             ('form', make_form),
             ('importance', make_importance),
         ]
