@@ -57,7 +57,7 @@ gender_mapping = {
 
 
 tei_template = """
-<TEI xmlns="http://www.tei-c.org/ns/1.0">
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xmlns:wikdict="http://www.wikdict.com/ns/1.0">
   <teiHeader xml:lang="en">
     <fileDesc>
       <titleStmt>
@@ -126,6 +126,7 @@ tei_template = """
         Use ref tag to encode license URL
       </change>
     </revisionDesc>
+    <wikdict:dummy />
   </teiHeader>
   <text>
     <body xml:lang="{from_lang}">
@@ -298,6 +299,7 @@ def write_tei_dict(from_lang, to_lang):
 
     # prepare template
     register_namespace('', 'http://www.tei-c.org/ns/1.0')
+    register_namespace('wikdict', 'http://www.wikdict.com/ns/1.0')
     today = datetime.date.today().isoformat()
     version = today.replace('-', '.')
     tei_template_xml = XML(tei_template.format(
@@ -311,6 +313,8 @@ def write_tei_dict(from_lang, to_lang):
 
     # render xml and add entries
     rendered_template = tostring(tei_template_xml, 'utf-8').decode('utf-8')
+    # if we don't add the dummy, the namespace is stripped, since no elements are in the XML, yet
+    rendered_template = rendered_template.replace('<wikdict:dummy />', '')
     complete_tei = rendered_template.format(
         entries=entries,
     )
