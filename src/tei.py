@@ -51,8 +51,7 @@ gender_mapping = {
     'feminine': 'fem',
     'masculine': 'masc',
     'neuter': 'neut',
-    'Neuter': 'neut',
-    'CommonGender': 'ut',
+    'commongender': 'ut',
 }
 
 
@@ -244,7 +243,7 @@ def single_tei_entry(x, to_lang):
         pos.text = pos_text
     if x['gender']:
         gen = SubElement(gram_grp, 'gen')
-        gen.text = gender_mapping[x['gender']]
+        gen.text = gender_mapping[x['gender'].lower()]
     if list(gram_grp):
         entry.append(gram_grp)
 
