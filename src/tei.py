@@ -151,9 +151,15 @@ def get_translations(from_lang, to_lang):
     conn.execute(
         "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang"
         % from_lang)
+    conn.execute(
+        "ATTACH DATABASE 'dictionaries/processed/%s.sqlite3' AS from_lang"
+        % from_lang)
     good_translations = next(conn.execute("""
         SELECT count(*) FROM translation WHERE score >= 100
     """))[0]
+    conn.execute("BEGIN")
+    conn.execute("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
+
     expected_good_translations = 50000
     min_translation_score = round(
         (good_translations - 1000) / expected_good_translations * 100)
@@ -187,7 +193,18 @@ def get_translations(from_lang, to_lang):
                     trans_list=list_split(t['trans_list']),
                 ))
 
+        entry['inflected_forms'] = list(conn.execute("""
+            SELECT other_written, min(rank) AS rank
+            FROM form f
+            WHERE lexentry = ?
+            GROUP BY other_written
+            ORDER BY rank;
+        """, [t['lexentry']]))
+
         yield entry
+
+    # We create an index and don't want to keep it in the db.
+    conn.rollback()
 
 
 def add_senses(entry, x, to_lang, is_suffix):
@@ -235,6 +252,13 @@ def single_tei_entry(x, to_lang):
         orth.text = x['written_rep']
         pos_text = pos_mapping.get(x['part_of_speech'],
                                    (x['part_of_speech'], None))[0]
+
+    # inflected forms
+    if x['inflected_forms']:
+        infl_form = SubElement(form, 'form', {'type': 'infl'})
+        for infl_form_row in x['inflected_forms']:
+            attrs = {'wikdict:show': 'true'} if infl_form_row['rank'] else {}
+            SubElement(infl_form, 'orth', attrs).text = infl_form_row['other_written']
 
     # gramGrp
     gram_grp = Element('gramGrp')
