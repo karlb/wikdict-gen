@@ -91,9 +91,9 @@ def parse_sense(sense, lang):
 
 def make_entry(conn, lang):
     if lang == 'sv':
-        # Swedish has the gende attributed to the forms. Fill the gender table from there.
+        # Swedish has the gender attributed to the forms. Fill the gender table from there.
         conn.executescript("""
-            DROP TABLE main.gender
+            DROP TABLE IF EXISTS main.gender;
             CREATE TABLE main.gender AS SELECT DISTINCT lexentry, gender FROM raw.form;
         """);
 
