@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 
 from helper import make_targets
 
@@ -40,7 +41,7 @@ def make_entry(conn, lang):
         INSERT INTO main.spellfix_entry(word, rank)
         SELECT DISTINCT
             written_rep,
-            score * score * score AS rank  -- incease weight of rank over distance
+            score * score * score AS rank  -- increase weight of rank over distance
         FROM main.entry
             JOIN (
                 SELECT substr(vocable, 5) AS written_rep,
@@ -102,6 +103,91 @@ def make_translation(conn, lang_pair):
         ORDER BY lexentry, min_sense_num;
         --CREATE INDEX main.translation_lexentry_idx ON translation('lexentry');
         CREATE INDEX main.translation_written_rep_idx ON translation('written_rep');
+    """)
+
+
+def _list_to_array(pipe_list):
+    """ Convert a pipe separated list into a json array """
+    if pipe_list is None:
+        return
+    return json.dumps(pipe_list.split(' | '))
+
+
+def make_translation_block(conn, lang_pair):
+    """ Combine all information for a bilingual dict entry in a single row """
+    conn.create_function('list_to_array', 1, _list_to_array)
+
+    conn.executescript("""
+        DROP TABLE IF EXISTS idioms;
+        CREATE TABLE idioms AS
+        SELECT written_rep,
+            (
+                SELECT json_group_array (DISTINCT json_each.value)
+                FROM json_each(list_to_array(group_concat(trans_list, ' | ')))
+            ) AS translations,
+            sum(score * importance) AS importance
+        FROM translation_grouped
+        GROUP BY written_rep;
+        CREATE INDEX idioms_written_rep_idx ON idioms(written_rep);
+
+        DROP TABLE IF EXISTS main.translation_block;
+        CREATE TABLE main.translation_block AS
+        SELECT *,
+            (
+                
+                SELECT json_group_array(
+                    json_object(
+                        'written_rep', matched_idioms.written_rep,
+                        'translations', json(matched_idioms.translations)
+                    )
+                )
+                FROM (
+                    SELECT DISTINCT written_rep, translations
+                    FROM search_trans
+                        JOIN idioms USING (written_rep)
+                    WHERE form MATCH replace(replace(t.written_rep, ')', ''), '(', '')  -- TODO: remove parentheses earlier
+                      AND search_trans.written_rep != t.written_rep
+                    ORDER BY importance DESC
+                    LIMIT 10
+                ) matched_idioms
+            ) AS idioms,
+            (
+                SELECT json_group_array(
+                        other_written
+                    )
+                FROM (
+                    SELECT group_concat(other_written, '/') AS other_written
+                    FROM form
+                    WHERE form.lexentry = t.lexentry
+                      AND rank IS NOT NULL
+                    GROUP BY rank
+                    ORDER BY rank
+                )
+            ) AS forms
+        FROM (
+            SELECT
+                lexentry,
+                written_rep,
+                part_of_speech,
+                gender,
+                pronun_list,
+                json_group_array(json_object(
+                    'senses', json(list_to_array(sense_list)),
+                    'translations', json(list_to_array(trans_list))
+                )) AS sense_groups
+                -- json_group_array(DISTINCT lexentry) AS lexentries
+                --min_sense_num,
+                --translation_grouped.score AS translation_score,
+                --importance,
+            FROM translation_grouped 
+                LEFT JOIN (
+                    SELECT lexentry, part_of_speech, gender, pronun_list
+                    FROM entry
+                ) USING (lexentry)
+            GROUP BY lexentry, written_rep, part_of_speech, gender, pronun_list
+        ) t;
+
+        CREATE INDEX main.translation_block_written_rep_idx ON translation_block('written_rep');
     """)
 
 
@@ -206,6 +292,7 @@ def do(lang, only, sql, **kwargs):
             ('translation', make_translation),
             ('simple_translation', make_simple_translation),
             ('search_index', make_search_index),
+            ('translation_block', make_translation_block),
             ('vacuum', vacuum),
             ('stats', update_stats),
         ]
