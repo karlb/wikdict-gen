@@ -87,6 +87,7 @@ class TestCleanConjugation(unittest.TestCase):
     def test_de(self):
         cleaner = make_conjugation_cleaner('de')
         self.assertEqual(cleaner('er/sie/es geht'), 'geht')
+        self.assertEqual(cleaner('wirf!'), 'wirf')
 
 
 if __name__ == '__main__':

@@ -120,7 +120,7 @@ def is_dummy_sense(sense, lang):
 
 def make_conjugation_cleaner(lang):
     if lang == 'de':
-        pronouns = re.compile(r'^(er/sie/es|ich|du|er|sie|es|wir|ihr|sie)\s*')
+        pronouns = re.compile(r'^(er/sie/es|ich|du|er|sie|es|wir|ihr|sie)\s+')
         imperative_exclamation_mark = re.compile('!$')
         return lambda x: imperative_exclamation_mark.sub('', pronouns.sub('', x))
     return lambda x: x
