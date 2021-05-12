@@ -6,31 +6,39 @@ import parse
 sense_num_re = re.compile(r'(\d+)(\w)?')
 
 
-CONJUGATION_TABLES = {
+INFLECTION_TABLES = {
     'de': """
-        INSERT INTO conjugation_table (rank, mood, number, person, tense, voice) VALUES
-            (1, 'IndicativeMood', 'Singular', 'First', 'Present', 'ActiveVoice'),
-            (2, 'IndicativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
-            (3, 'IndicativeMood', 'Singular', 'Third', 'Present', 'ActiveVoice'),
-            (4, 'IndicativeMood', 'Singular', 'First', 'Past', 'ActiveVoice'),
-            (5, 'SubjunctiveMood', 'Singular', 'First', 'Past', 'ActiveVoice'),
-            (6, 'ImperativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
-            (7, 'ImperativeMood', 'Plural', 'Second', 'Present', 'ActiveVoice'),
-            (8, 'IndicativeMood', 'Singular', 'First', 'Perfect', 'ActiveVoice');
+        INSERT INTO inflection_table (pos, rank, mood, number, person, tense, voice) VALUES
+            ('verb', 1, 'IndicativeMood', 'Singular', 'First', 'Present', 'ActiveVoice'),
+            -- ('verb', 2, 'IndicativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
+            -- ('verb', 3, 'IndicativeMood', 'Singular', 'Third', 'Present', 'ActiveVoice'),
+            ('verb', 4, 'IndicativeMood', 'Singular', 'First', 'Past', 'ActiveVoice'),
+            -- ('verb', 5, 'SubjunctiveMood', 'Singular', 'First', 'Past', 'ActiveVoice'),
+            -- ('verb', 6, 'ImperativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
+            -- ('verb', 7, 'ImperativeMood', 'Plural', 'Second', 'Present', 'ActiveVoice'),
+            ('verb', 8, 'IndicativeMood', 'Singular', 'First', 'Perfect', 'ActiveVoice');
+        INSERT INTO inflection_table (pos, rank, number, "case") VALUES
+            ('noun', 1, 'Singular', 'Nominative'),
+            ('noun', 2, 'Plural', 'Nominative');
     """,
     'en': """
-        INSERT INTO conjugation_table (rank, mood, number, person, tense) VALUES
-            -- (1, NULL, 'Singular', 'Third', 'Present'),
-            -- (2, 'Participle', NULL, NULL, 'Present'),
-            (3, NULL, NULL, NULL, 'Past'),
-            (4, 'Participle', NULL , NULL, 'Past');
+        INSERT INTO inflection_table (pos, rank, mood, number, person, tense) VALUES
+            -- ('verb', 1, NULL, 'Singular', 'Third', 'Present'),
+            -- ('verb', 2, 'Participle', NULL, NULL, 'Present'),
+            ('verb', 3, NULL, NULL, NULL, 'Past'),
+            ('verb', 4, 'Participle', NULL , NULL, 'Past');
     """,
     'sv': """
-        INSERT INTO conjugation_table (rank, mood, tense, voice, tense_name) VALUES
-            (1, NULL, 'Past', 'ActiveVoice', 'Preteritum'),
-            (2, NULL, 'Supine', 'ActiveVoice', 'Supinum'),
-            (3, 'ImperativeMood', NULL, 'ActiveVoice', 'Imperativ'),
-            (4, NULL, 'Present', 'ActiveVoice', 'Presens');
+        INSERT INTO inflection_table (pos, rank, mood, tense, voice, tense_name) VALUES
+            ('verb', 1, 'IndicativeMood', 'Present', 'ActiveVoice', 'Presens'),
+            ('verb', 2, 'IndicativeMood', 'Past', 'ActiveVoice', 'Preteritum'),
+            -- The supinum has different moods. I don't understand why.
+            ('verb', 3, 'PastParticiple', 'Supine', 'ActiveVoice', 'Supinum'),
+            ('verb', 3, NULL, 'Supine', 'ActiveVoice', 'Supinum'),
+            ('verb', 4, 'ImperativeMood', NULL, 'ActiveVoice', 'Imperativ');
+        INSERT INTO inflection_table (pos, rank, number, "case", definiteness) VALUES
+            ('noun', 1, 'Singular', 'Nominative', 'Definite'),
+            ('noun', 2, 'Plural', 'Nominative', 'Definite');
     """
 }
 
@@ -138,7 +146,6 @@ def make_entry(conn, lang):
 def make_form(conn, lang):
     conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
     conn.create_function('clean_html', 1, parse.html_parser.parse)
-    conn.create_function('clean_conjugation', 1, parse.make_conjugation_cleaner(lang))
     conn.create_function('clean_inflection', 1, parse.make_inflection_cleaner(lang))
     conn.executescript("""
         DROP TABLE IF EXISTS main.form;
@@ -148,18 +155,22 @@ def make_form(conn, lang):
         FROM (
             SELECT lexentry,
                 clean_wiki_syntax(clean_html(other_written)) AS other_written_full,
-                pos,
-                form.mood, form.number, form.person, form.tense, form.voice,
-                "case", inflection, c.rank
+                form.pos, c.rank, form.number,
+                form.mood, form.person, form.tense, form.voice,
+                form."case", form.definiteness, inflection
             FROM raw.form
-                LEFT JOIN conjugation_table c ON (
-                    form.mood IS c.mood
+                LEFT JOIN inflection_table c ON (
+                    form.pos IS c.pos
                     AND form.number IS c.number
+                    AND form.mood IS c.mood
                     AND form.person IS c.person
                     AND form.tense IS c.tense
                     AND form.voice IS c.voice
+                    AND form."case" IS c."case"
+                    AND form.definiteness IS c.definiteness
                 )
-        )
+        );
+        CREATE INDEX form_lexentry_idx ON form(lexentry);  -- TODO make uniqe on rank?
     """)
 
 
@@ -233,22 +244,24 @@ def make_translation(conn, lang):
     """)
 
 
-def make_conjugation_table(conn, lang):
+def make_inflection_table(conn, lang):
     conn.executescript("""
-        DROP TABLE IF EXISTS conjugation_table;
-        CREATE TABLE conjugation_table(
-            rank, mood, number, person, tense, voice, tense_name);
+        DROP TABLE IF EXISTS inflection_table;
+        CREATE TABLE inflection_table(
+            pos, rank, number,
+            mood, person, tense, voice, tense_name,
+            "case", definiteness);
     """)
 
-    if lang in CONJUGATION_TABLES:
-        conn.executescript(CONJUGATION_TABLES[lang])
+    if lang in INFLECTION_TABLES:
+        conn.executescript(INFLECTION_TABLES[lang])
 
 
 def do(lang, only, sql, **kwargs):
     if '-' not in lang:
         targets = [
             ('entry', make_entry),
-            ('conjugation_table', make_conjugation_table),
+            ('inflection_table', make_inflection_table),
             ('form', make_form),
             ('importance', make_importance),
         ]
