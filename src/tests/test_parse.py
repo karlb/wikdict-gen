@@ -4,7 +4,7 @@
 import unittest
 
 import sys
-from parse import html_parser, clean_wiki_syntax, is_dummy_sense, make_conjugation_cleaner
+from parse import html_parser, clean_wiki_syntax, is_dummy_sense, make_inflection_cleaner
 
 
 class TestParseHTML(unittest.TestCase):
@@ -82,12 +82,13 @@ class TestParseCleanup(unittest.TestCase):
             "Saillir une femelle (la féconder).")
 
 
-class TestCleanConjugation(unittest.TestCase):
+class TestCleanInflection(unittest.TestCase):
 
     def test_de(self):
-        cleaner = make_conjugation_cleaner('de')
+        cleaner = make_inflection_cleaner('de')
         self.assertEqual(cleaner('er/sie/es geht'), 'geht')
         self.assertEqual(cleaner('wirf!'), 'wirf')
+        self.assertEqual(cleaner('die Bäume'), 'Bäume')
 
 
 if __name__ == '__main__':

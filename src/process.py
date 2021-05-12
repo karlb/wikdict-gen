@@ -139,11 +139,12 @@ def make_form(conn, lang):
     conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
     conn.create_function('clean_html', 1, parse.html_parser.parse)
     conn.create_function('clean_conjugation', 1, parse.make_conjugation_cleaner(lang))
+    conn.create_function('clean_inflection', 1, parse.make_inflection_cleaner(lang))
     conn.executescript("""
         DROP TABLE IF EXISTS main.form;
         CREATE TABLE form AS
         SELECT *,
-            clean_conjugation(other_written_full) AS other_written
+            clean_inflection(other_written_full) AS other_written
         FROM (
             SELECT lexentry,
                 clean_wiki_syntax(clean_html(other_written)) AS other_written_full,

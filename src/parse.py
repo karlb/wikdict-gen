@@ -118,9 +118,10 @@ def is_dummy_sense(sense, lang):
     return False
 
 
-def make_conjugation_cleaner(lang):
+def make_inflection_cleaner(lang):
     if lang == 'de':
         pronouns = re.compile(r'^(er/sie/es|ich|du|er|sie|es|wir|ihr|sie)\s+')
         imperative_exclamation_mark = re.compile('!$')
-        return lambda x: imperative_exclamation_mark.sub('', pronouns.sub('', x))
+        remove_articles = re.compile(r'^(der|die|das)\s+')
+        return lambda x: remove_articles.sub('', imperative_exclamation_mark.sub('', pronouns.sub('', x)))
     return lambda x: x
