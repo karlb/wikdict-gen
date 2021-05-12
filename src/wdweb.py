@@ -117,9 +117,21 @@ def make_translation_block(conn, lang_pair):
     """ Combine all information for a bilingual dict entry in a single row """
     conn.create_function('list_to_array', 1, _list_to_array)
 
+    # Improved speed in following queries
+    conn.executescript("""
+        CREATE TEMPORARY TABLE main.translation_grouped AS
+        SELECT * FROM generic.translation_grouped;
+
+        CREATE INDEX translation_grouped_written_rep_idx ON translation_grouped(written_rep);
+    """);
+
     conn.executescript("""
         DROP TABLE IF EXISTS idioms;
-        CREATE TABLE idioms AS
+        CREATE VIRTUAL TABLE main.idioms USING fts4(
+            written_rep, translations, importance,
+            notindexed=translations, notindexed=importance
+        );
+        INSERT INTO idioms
         SELECT written_rep,
             (
                 SELECT json_group_array (DISTINCT json_each.value)
@@ -128,64 +140,61 @@ def make_translation_block(conn, lang_pair):
             sum(score * importance) AS importance
         FROM translation_grouped
         GROUP BY written_rep;
-        CREATE INDEX idioms_written_rep_idx ON idioms(written_rep);
+    """)
 
+    conn.executescript("""
         DROP TABLE IF EXISTS main.translation_block;
         CREATE TABLE main.translation_block AS
-        SELECT *,
-            (
-                
-                SELECT json_group_array(
-                    json_object(
-                        'written_rep', matched_idioms.written_rep,
-                        'translations', json(matched_idioms.translations)
-                    )
-                )
-                FROM (
-                    SELECT DISTINCT written_rep, translations
-                    FROM search_trans
-                        JOIN idioms USING (written_rep)
-                    WHERE form MATCH replace(replace(t.written_rep, ')', ''), '(', '')  -- TODO: remove parentheses earlier
-                      AND search_trans.written_rep != t.written_rep
-                    ORDER BY importance DESC
-                    LIMIT 10
-                ) matched_idioms
-            ) AS idioms,
-            (
-                SELECT json_group_array(
-                        other_written
-                    )
-                FROM (
-                    SELECT group_concat(other_written, '/') AS other_written
-                    FROM form
-                    WHERE form.lexentry = t.lexentry
-                      AND rank IS NOT NULL
-                    GROUP BY rank
-                    ORDER BY rank
-                )
-            ) AS forms
+        SELECT *, 
+            grouped_forms.forms AS forms
         FROM (
             SELECT
                 lexentry,
                 written_rep,
                 part_of_speech,
                 gender,
-                pronun_list,
-                json_group_array(json_object(
-                    'senses', json(list_to_array(sense_list)),
-                    'translations', json(list_to_array(trans_list))
-                )) AS sense_groups
-                -- json_group_array(DISTINCT lexentry) AS lexentries
+                list_to_array(pronun_list) AS pronuns,
+                sense_groups,
                 --min_sense_num,
-                --translation_grouped.score AS translation_score,
-                --importance,
-            FROM translation_grouped 
+                translation_score,
+                importance
+            FROM
+                (
+                    SELECT lexentry,
+                        json_group_array(json_object(
+                            'senses', json(list_to_array(sense_list)),
+                            'translations', json(list_to_array(trans_list))
+                        )) AS sense_groups,
+                        max(score) AS translation_score,
+                        max(importance) AS importance
+                    FROM (
+                        SELECT *
+                        FROM translation_grouped
+                        ORDER BY lexentry, score DESC
+                    )
+                    GROUP BY lexentry
+                ) translation_grouped 
                 LEFT JOIN (
-                    SELECT lexentry, part_of_speech, gender, pronun_list
+                    SELECT lexentry, written_rep, part_of_speech, gender, pronun_list
                     FROM entry
                 ) USING (lexentry)
             GROUP BY lexentry, written_rep, part_of_speech, gender, pronun_list
-        ) t;
+        ) t
+        LEFT JOIN (
+            SELECT lexentry, json_group_array(other_written) AS forms
+            FROM (
+                SELECT lexentry, group_concat(other_written, '/') AS other_written
+                FROM (
+                    SELECT lexentry, other_written, min(rank) AS rank
+                    FROM form
+                    WHERE rank IS NOT NULL
+                    GROUP BY lexentry, other_written
+                )
+                GROUP BY lexentry, rank
+                ORDER BY rank
+            )
+            GROUP BY lexentry
+        ) grouped_forms USING (lexentry);
 
         CREATE INDEX main.translation_block_written_rep_idx ON translation_block('written_rep');
     """)
@@ -228,6 +237,33 @@ def make_search_index(conn, lang_pair):
         WHERE written_rep IN (
             SELECT written_rep FROM main.translation
         );
+    """.format(TOKENIZER[from_lang]))
+
+    # optimize
+    conn.execute(
+        "INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
+
+
+def make_search_by_form(conn, lang_pair):
+    from_lang, _ = lang_pair.split('-')
+
+    conn.executescript("""
+        -- search table
+        DROP TABLE IF EXISTS main.search_by_form;
+        CREATE VIRTUAL TABLE main.search_by_form USING fts4(
+            form, translation_block_rowid, form_importance, tokenize={},
+            notindexed=translation_block_rowid,
+            notindexed=form_importance
+        );
+
+        -- insert data
+        INSERT INTO main.search_by_form
+        SELECT other_written, translation_block.rowid, 0.5 AS form_importance
+        FROM translation_block
+            JOIN form USING (lexentry)
+        UNION
+        SELECT written_rep, translation_block.rowid, 1 AS form_importance
+        FROM translation_block;
     """.format(TOKENIZER[from_lang]))
 
     # optimize
@@ -293,6 +329,7 @@ def do(lang, only, sql, **kwargs):
             ('simple_translation', make_simple_translation),
             ('search_index', make_search_index),
             ('translation_block', make_translation_block),
+            ('search_by_form', make_search_by_form),
             ('vacuum', vacuum),
             ('stats', update_stats),
         ]
