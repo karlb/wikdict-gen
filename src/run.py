@@ -2,7 +2,7 @@
 import os
 import argparse
 import subprocess
-from pysqlite3 import dbapi2 as sqlite3
+import sqlite3
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 

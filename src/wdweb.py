@@ -300,8 +300,6 @@ def update_stats(conn, lang_pair):
 
 
 def vacuum(conn, lang):
-    # workaround for https://github.com/ghaering/pysqlite/issues/109
-    conn.isolation_level = None
     conn.execute('VACUUM')
 
 
