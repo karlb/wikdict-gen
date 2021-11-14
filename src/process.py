@@ -34,8 +34,8 @@ INFLECTION_TABLES = {
             ('verb', 2, 'IndicativeMood', 'Past', 'ActiveVoice', 'Preteritum'),
             -- The supinum has different moods. I don't understand why.
             ('verb', 3, 'PastParticiple', 'Supine', 'ActiveVoice', 'Supinum'),
-            ('verb', 3, NULL, 'Supine', 'ActiveVoice', 'Supinum'),
-            ('verb', 4, 'ImperativeMood', NULL, 'ActiveVoice', 'Imperativ');
+            ('verb', 3, NULL, 'Supine', 'ActiveVoice', 'Supinum');
+            -- ('verb', 4, 'ImperativeMood', NULL, 'ActiveVoice', 'Imperativ');
         INSERT INTO inflection_table (pos, rank, number, "case", definiteness) VALUES
             ('noun', 1, 'Singular', 'Nominative', 'Definite'),
             ('noun', 2, 'Plural', 'Nominative', 'Definite');
