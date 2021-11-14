@@ -46,8 +46,13 @@ def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None,
     else:
         os.makedirs('dictionaries/' + out_path, exist_ok=True)
         conn = sqlite3.connect('dictionaries/%s/%s.sqlite3' % (out_path, lang))
-    conn.execute("ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
-                 % (in_path, lang, in_path))
+    try:
+        conn.execute("ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
+                     % (in_path, lang, in_path))
+    except pysqlite3.dbapi2.OperationalError:
+        print('Error attaching ', in_path, lang, 'database')
+        raise
+
     for a in attach:
         conn.execute(
             "ATTACH DATABASE " + a)
