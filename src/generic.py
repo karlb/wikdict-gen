@@ -58,7 +58,7 @@ def simple_translation(conn, lang):
             WHERE (from_lang, to_lang) = (?, ?)
             GROUP BY from_vocable, to_vocable
             ORDER BY from_vocable, coalesce(min(sense_num), '999'), max(score) DESC
-        ) LEFT JOIN lang.rel_importance ON (from_vocable = vocable)
+        ) LEFT JOIN lang.rel_importance ON (from_vocable = lang.rel_importance.written_rep_guess)
         GROUP BY from_vocable
         """, lang.split('-'))
 
