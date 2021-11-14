@@ -119,10 +119,10 @@ def make_translation_block(conn, lang_pair):
 
     # Improved speed in following queries
     conn.executescript("""
-        CREATE TEMPORARY TABLE main.translation_grouped AS
+        CREATE TEMPORARY TABLE translation_grouped AS
         SELECT * FROM generic.translation_grouped;
 
-        CREATE INDEX translation_grouped_written_rep_idx ON translation_grouped(written_rep);
+        CREATE INDEX temp.translation_grouped_written_rep_idx ON translation_grouped(written_rep);
     """);
 
     conn.executescript("""
