@@ -47,18 +47,14 @@ class TestParseCleanup(unittest.TestCase):
             "Gesamtheit, alle")
 
     def test_double_brackets(self):
-        self.assertEqual(
-            clean_wiki_syntax("Qui est en [[âge]] de se [[marier]]"),
-            "Qui est en âge de se marier")
-        self.assertEqual(
-            clean_wiki_syntax("Voir [[sauter#fr|sauter]]"),
-            "Voir sauter")
-        self.assertEqual(
-            clean_wiki_syntax("[[bloc de béton]]"),
-            "bloc de béton")
-        self.assertEqual(
-            clean_wiki_syntax("[[ojentaa]] ([[käsi|käte]][[-nsa|nsä]])"),
-            "ojentaa (kätensä)")
+        for wiki, out in [
+            ("Qui est en [[âge]] de se [[marier]]", "Qui est en âge de se marier"),
+            ("Voir [[sauter#fr|sauter]]", "Voir sauter"),
+            ("[[bloc de béton]]", "bloc de béton"),
+            ("[[ojentaa]] ([[käsi|käte]][[-nsa|nsä]])", "ojentaa (kätensä)"),
+        ]:
+            with self.subTest():
+                self.assertEqual(clean_wiki_syntax(wiki), out)
 
     def test_dummy_sense(self):
         dummies = [
