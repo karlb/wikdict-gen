@@ -300,6 +300,7 @@ def update_stats(conn, lang_pair):
 
 
 def vacuum(conn, lang):
+    conn.isolation_level = None
     conn.execute('VACUUM')
 
 
