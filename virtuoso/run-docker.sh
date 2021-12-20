@@ -1,3 +1,4 @@
+#!/bin/sh
 
 docker run \
 	--name wikdict-virtuoso \
