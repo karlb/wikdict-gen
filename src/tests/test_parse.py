@@ -56,6 +56,9 @@ class TestParseCleanup(unittest.TestCase):
         self.assertEqual(
             clean_wiki_syntax("[[bloc de béton]]"),
             "bloc de béton")
+        self.assertEqual(
+            clean_wiki_syntax("[[ojentaa]] ([[käsi|käte]][[-nsa|nsä]])"),
+            "ojentaa (kätensä)")
 
     def test_dummy_sense(self):
         dummies = [

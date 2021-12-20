@@ -92,7 +92,7 @@ html_parser = MyHTMLParser()
 
 bold_and_italics = re.compile(r"'{2,3}")
 noise_at_start = re.compile(r"^[:\|] ?")
-double_brackets = re.compile(r"\[\[(?:[\w#]+\|)?([\w ]+)\]\]")
+double_brackets = re.compile(r"\[\[(?:[-\w#]+\|)?([\w ]+)\]\]")
 braces_nocat = re.compile(r"\|(?:\d+ )?{{.*nocat=1")
 braces_notclosed = re.compile(r"{{[^}]+")
 
