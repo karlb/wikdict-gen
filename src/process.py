@@ -3,11 +3,11 @@ import re
 from helper import make_targets
 import parse
 
-sense_num_re = re.compile(r'(\d+)(\w)?')
+sense_num_re = re.compile(r"(\d+)(\w)?")
 
 
 INFLECTION_TABLES = {
-    'de': """
+    "de": """
         INSERT INTO inflection_table (pos, rank, mood, number, person, tense, voice) VALUES
             ('verb', 1, 'IndicativeMood', 'Singular', 'First', 'Present', 'ActiveVoice'),
             -- ('verb', 2, 'IndicativeMood', 'Singular', 'Second', 'Present', 'ActiveVoice'),
@@ -21,14 +21,14 @@ INFLECTION_TABLES = {
             ('noun', 1, 'Singular', 'Nominative'),
             ('noun', 2, 'Plural', 'Nominative');
     """,
-    'en': """
+    "en": """
         INSERT INTO inflection_table (pos, rank, mood, number, person, tense) VALUES
             -- ('verb', 1, NULL, 'Singular', 'Third', 'Present'),
             -- ('verb', 2, 'Participle', NULL, NULL, 'Present'),
             ('verb', 3, NULL, NULL, NULL, 'Past'),
             ('verb', 4, 'Participle', NULL , NULL, 'Past');
     """,
-    'sv': """
+    "sv": """
         INSERT INTO inflection_table (pos, rank, mood, tense, voice, tense_name) VALUES
             ('verb', 1, 'IndicativeMood', 'Present', 'ActiveVoice', 'Presens'),
             ('verb', 2, 'IndicativeMood', 'Past', 'ActiveVoice', 'Preteritum'),
@@ -39,12 +39,11 @@ INFLECTION_TABLES = {
         INSERT INTO inflection_table (pos, rank, number, "case", definiteness) VALUES
             ('noun', 1, 'Singular', 'Nominative', 'Definite'),
             ('noun', 2, 'Plural', 'Nominative', 'Definite');
-    """
+    """,
 }
 
 
 class PartOfSpeechChooser:
-
     def __init__(self):
         self.pos_list = []
 
@@ -64,6 +63,7 @@ def log_exceptions(f):
             print('Error in function "{}":'.format(f.__name__))
             print(e)
             raise
+
     return f_with_log
 
 
@@ -72,8 +72,8 @@ def parse_sense_num(c):
     if not c:
         return None
     match = sense_num_re.match(c)
-    assert match, 'Sense re does not match for %r' % c
-    normalized_sense_num = '{:02d}'.format(int(match.group(1)))
+    assert match, "Sense re does not match for %r" % c
+    normalized_sense_num = "{:02d}".format(int(match.group(1)))
     if match.group(2):
         normalized_sense_num += match.group(2)
     return normalized_sense_num
@@ -84,7 +84,7 @@ def parse_sense(sense, lang):
     if sense is None:
         return None
     sense = sense.strip()
-    if sense == '':
+    if sense == "":
         return None
 
     sense = parse.clean_wiki_syntax(sense)
@@ -98,15 +98,18 @@ def parse_sense(sense, lang):
 
 
 def make_entry(conn, lang):
-    if lang == 'sv':
+    if lang == "sv":
         # Swedish has the gender attributed to the forms. Fill the gender table from there.
-        conn.executescript("""
+        conn.executescript(
+            """
             DROP TABLE IF EXISTS main.gender;
             CREATE TABLE main.gender AS SELECT DISTINCT lexentry, gender FROM raw.form;
-        """);
+        """
+        )
 
     conn.create_aggregate("choose_pos", 1, PartOfSpeechChooser)
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE entry AS
         SELECT lexentry, vocable, written_rep, part_of_speech, gender,
@@ -140,14 +143,16 @@ def make_entry(conn, lang):
 --        WHERE written_rep is NOT NULL
 --          AND written_rep != ''
 --        GROUP BY lexentry;
-    """)
+    """
+    )
 
 
 def make_form(conn, lang):
-    conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
-    conn.create_function('clean_html', 1, parse.html_parser.parse)
-    conn.create_function('clean_inflection', 1, parse.make_inflection_cleaner(lang))
-    conn.executescript("""
+    conn.create_function("clean_wiki_syntax", 1, parse.clean_wiki_syntax)
+    conn.create_function("clean_html", 1, parse.html_parser.parse)
+    conn.create_function("clean_inflection", 1, parse.make_inflection_cleaner(lang))
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.form;
         CREATE TABLE form AS
         SELECT *,
@@ -171,11 +176,13 @@ def make_form(conn, lang):
                 )
         );
         CREATE INDEX form_lexentry_idx ON form(lexentry);  -- TODO make uniqe on rank?
-    """)
+    """
+    )
 
 
 def make_importance(conn, lang):
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.importance;
         CREATE TABLE importance AS
         -- The input data should already be distinct, but Virtuoso fails to do
@@ -204,22 +211,24 @@ def make_importance(conn, lang):
                 ORDER BY score DESC LIMIT 10000
             )
         );
-    """)
+    """
+    )
 
 
 def make_translation(conn, lang):
-    (from_lang, _) = lang.split('-')
+    (from_lang, _) = lang.split("-")
 
     def parse_sense_with_lang(x):
         return parse_sense(x, from_lang)
 
-    conn.create_function('parse_sense_num', 1, parse_sense_num)
-    conn.create_function('parse_sense', 1, parse_sense_with_lang)
-    conn.create_function('clean_wiki_syntax', 1, parse.clean_wiki_syntax)
+    conn.create_function("parse_sense_num", 1, parse_sense_num)
+    conn.create_function("parse_sense", 1, parse_sense_with_lang)
+    conn.create_function("clean_wiki_syntax", 1, parse.clean_wiki_syntax)
     # The outer query removes duplicates in the case of different lexentries
     # with the same translation and sense. E.g. for transitive and intransitive
     # variants of a vocable which both map to the same translation.
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE translation AS
         SELECT min(lexentry) AS lexentry, sense_num, sense, written_rep, trans,
@@ -241,35 +250,38 @@ def make_translation(conn, lang):
         )
         WHERE trans != ''
         GROUP BY sense_num, sense, written_rep, trans;
-    """)
+    """
+    )
 
 
 def make_inflection_table(conn, lang):
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS inflection_table;
         CREATE TABLE inflection_table(
             pos, rank, number,
             mood, person, tense, voice, tense_name,
             "case", definiteness);
-    """)
+    """
+    )
 
     if lang in INFLECTION_TABLES:
         conn.executescript(INFLECTION_TABLES[lang])
 
 
 def do(lang, only, sql, **kwargs):
-    if '-' not in lang:
+    if "-" not in lang:
         targets = [
-            ('entry', make_entry),
-            ('inflection_table', make_inflection_table),
-            ('form', make_form),
-            ('importance', make_importance),
+            ("entry", make_entry),
+            ("inflection_table", make_inflection_table),
+            ("form", make_form),
+            ("importance", make_importance),
         ]
         attach = []
     else:
-        (from_lang, to_lang) = lang.split('-')
+        (from_lang, to_lang) = lang.split("-")
         targets = [
-            ('translation', make_translation),
+            ("translation", make_translation),
         ]
         attach = [
             "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
@@ -278,8 +290,8 @@ def do(lang, only, sql, **kwargs):
 
     make_targets(
         lang,
-        in_path='raw',
-        out_path='processed',
+        in_path="raw",
+        out_path="processed",
         targets=targets,
         attach=attach,
         only=only,
@@ -289,8 +301,9 @@ def do(lang, only, sql, **kwargs):
 
 def add_subparsers(subparsers):
     process = subparsers.add_parser(
-        'process', help='process raw db into a new processed db')
-    process.add_argument('lang')
+        "process", help="process raw db into a new processed db"
+    )
+    process.add_argument("lang")
     process.set_defaults(func=do)
-    process.add_argument('--only')
-    process.add_argument('--sql')
+    process.add_argument("--only")
+    process.add_argument("--sql")

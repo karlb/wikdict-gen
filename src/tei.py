@@ -6,7 +6,12 @@ import datetime
 import codecs
 from itertools import groupby, permutations
 from xml.etree.cElementTree import (
-    Element, SubElement, tostring, XML, register_namespace)
+    Element,
+    SubElement,
+    tostring,
+    XML,
+    register_namespace,
+)
 from collections import OrderedDict
 
 from languages import language_names, language_codes3
@@ -30,28 +35,30 @@ def indent(elem, level=0):
             elem.tail = i
 
 
-pos_mapping = OrderedDict([
-    ('adjective', ('adj', 'FreeDict_ontology.xml#f_pos_adj')),
-    ('adverb', ('adv', 'FreeDict_ontology.xml#f_pos_adv')),
-    ('noun', ('n', 'FreeDict_ontology.xml#f_pos_noun')),
-    ('properNoun', ('pn', 'FreeDict_ontology.xml#f_pos_noun')),
-    ('verb', ('v', 'FreeDict_ontology.xml#f_pos_verb')),
-    # other pos from ontology which are not used, yet:
-    # <item ana="FreeDict_ontology.xml#f_pos_v-intrans">vi</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_v-trans">vt</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_num">num</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_prep">prep</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_int">int</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_pron">pron</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_conj">conj</item>
-    # <item ana="FreeDict_ontology.xml#f_pos_art">art</item>
-])
+pos_mapping = OrderedDict(
+    [
+        ("adjective", ("adj", "FreeDict_ontology.xml#f_pos_adj")),
+        ("adverb", ("adv", "FreeDict_ontology.xml#f_pos_adv")),
+        ("noun", ("n", "FreeDict_ontology.xml#f_pos_noun")),
+        ("properNoun", ("pn", "FreeDict_ontology.xml#f_pos_noun")),
+        ("verb", ("v", "FreeDict_ontology.xml#f_pos_verb")),
+        # other pos from ontology which are not used, yet:
+        # <item ana="FreeDict_ontology.xml#f_pos_v-intrans">vi</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_v-trans">vt</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_num">num</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_prep">prep</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_int">int</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_pron">pron</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_conj">conj</item>
+        # <item ana="FreeDict_ontology.xml#f_pos_art">art</item>
+    ]
+)
 
 gender_mapping = {
-    'feminine': 'fem',
-    'masculine': 'masc',
-    'neuter': 'neut',
-    'commongender': 'ut',
+    "feminine": "fem",
+    "masculine": "masc",
+    "neuter": "neut",
+    "commongender": "ut",
 }
 
 
@@ -139,34 +146,43 @@ tei_template = """
 def list_split(l):
     if l is None:
         return []
-    return l.split(' | ')
+    return l.split(" | ")
 
 
 def get_translations(from_lang, to_lang):
     conn = sqlite3.connect(
-        'file:dictionaries/generic/%s-%s.sqlite3?mode=ro'
-        % (from_lang, to_lang),
-        uri=True)
+        "file:dictionaries/generic/%s-%s.sqlite3?mode=ro" % (from_lang, to_lang),
+        uri=True,
+    )
     conn.row_factory = sqlite3.Row
     conn.execute(
-        "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang"
-        % from_lang)
+        "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang" % from_lang
+    )
     conn.execute(
-        "ATTACH DATABASE 'dictionaries/processed/%s.sqlite3' AS from_lang"
-        % from_lang)
-    good_translations = next(conn.execute("""
+        "ATTACH DATABASE 'dictionaries/processed/%s.sqlite3' AS from_lang" % from_lang
+    )
+    good_translations = next(
+        conn.execute(
+            """
         SELECT count(*) FROM translation WHERE score >= 100
-    """))[0]
+    """
+        )
+    )[0]
     conn.execute("BEGIN")
     conn.execute("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
 
     expected_good_translations = 50000
     min_translation_score = round(
-        (good_translations - 1000) / expected_good_translations * 100)
+        (good_translations - 1000) / expected_good_translations * 100
+    )
     min_translation_score = max(min(min_translation_score, 100), 0)
-    print('{} good translations, min_score = {}'.format(
-        good_translations, min_translation_score))
-    translations = conn.execute("""
+    print(
+        "{} good translations, min_score = {}".format(
+            good_translations, min_translation_score
+        )
+    )
+    translations = conn.execute(
+        """
         SELECT lexentry,
             t.written_rep, t.sense_list, t.trans_list,
             e.gender, e.part_of_speech, e.pronun_list
@@ -174,32 +190,51 @@ def get_translations(from_lang, to_lang):
              JOIN prod_lang.entry e USING (lexentry)
         WHERE score >= ?
         ORDER BY t.written_rep, e.part_of_speech, e.gender, e.pronun_list, t.min_sense_num
-    """, [min_translation_score])
-    groups = groupby(translations,
-                     lambda t: (t['written_rep'], t['part_of_speech'],
-                                t['gender'], t['pronun_list']))
+    """,
+        [min_translation_score],
+    )
+    groups = groupby(
+        translations,
+        lambda t: (
+            t["written_rep"],
+            t["part_of_speech"],
+            t["gender"],
+            t["pronun_list"],
+        ),
+    )
     for key, translations_for_entry in groups:
         written_rep, part_of_speech, gender, pronun_list = key
-        entry = dict(written_rep=written_rep, part_of_speech=part_of_speech,
-                     gender=gender, pronuns=list_split(pronun_list))
-        entry['senses'] = []
+        entry = dict(
+            written_rep=written_rep,
+            part_of_speech=part_of_speech,
+            gender=gender,
+            pronuns=list_split(pronun_list),
+        )
+        entry["senses"] = []
         for t in translations_for_entry:
-            sense_list = list_split(t['sense_list'])
+            sense_list = list_split(t["sense_list"])
             if not sense_list:
                 sense_list = [None]
             for s in sense_list:
-                entry['senses'].append(dict(
-                    gloss=s,
-                    trans_list=list_split(t['trans_list']),
-                ))
+                entry["senses"].append(
+                    dict(
+                        gloss=s,
+                        trans_list=list_split(t["trans_list"]),
+                    )
+                )
 
-        entry['inflected_forms'] = list(conn.execute("""
+        entry["inflected_forms"] = list(
+            conn.execute(
+                """
             SELECT other_written, min(rank) AS rank
             FROM form f
             WHERE lexentry = ?
             GROUP BY other_written
             ORDER BY rank;
-        """, [t['lexentry']]))
+        """,
+                [t["lexentry"]],
+            )
+        )
 
         yield entry
 
@@ -208,66 +243,61 @@ def get_translations(from_lang, to_lang):
 
 
 def add_senses(entry, x, to_lang, is_suffix):
-    groups = groupby(x['senses'], lambda s: (s['trans_list']))
+    groups = groupby(x["senses"], lambda s: (s["trans_list"]))
     for trans_list, subsenses in groups:
-        sense = SubElement(entry, 'sense')
+        sense = SubElement(entry, "sense")
         # translation
-        cit = SubElement(sense, 'cit',
-                         {'type': 'trans', 'xml:lang': to_lang})
+        cit = SubElement(sense, "cit", {"type": "trans", "xml:lang": to_lang})
         for trans in trans_list:
-            assert trans, 'empty translation for %r' % x
-            quote = SubElement(cit, 'quote')
+            assert trans, "empty translation for %r" % x
+            quote = SubElement(cit, "quote")
             if is_suffix:
                 trans = trans[1:]
             quote.text = trans
 
         # subsenses
         for s in subsenses:
-            if s['gloss']:
-                subsense = SubElement(sense, 'sense')
-                sense_def = SubElement(subsense, 'def')
-                sense_def.text = s['gloss']
-
+            if s["gloss"]:
+                subsense = SubElement(sense, "sense")
+                sense_def = SubElement(subsense, "def")
+                sense_def.text = s["gloss"]
 
 
 def single_tei_entry(x, to_lang):
     # entry
-    entry = Element('entry')
-    form = SubElement(entry, 'form')
-    orth = SubElement(form, 'orth')
-    if x['pronuns']:
-        for p in x['pronuns']:
-            pron = SubElement(form, 'pron')
+    entry = Element("entry")
+    form = SubElement(entry, "form")
+    orth = SubElement(form, "orth")
+    if x["pronuns"]:
+        for p in x["pronuns"]:
+            pron = SubElement(form, "pron")
             pron.text = p
-    is_suffix = (
-        x['part_of_speech'] == 'suffix' or
-        (x['part_of_speech'] in ('', None)
-         and x['written_rep'].startswith('-'))
+    is_suffix = x["part_of_speech"] == "suffix" or (
+        x["part_of_speech"] in ("", None) and x["written_rep"].startswith("-")
     )
     if is_suffix:
-        #assert x['written_rep'].startswith('-')
-        orth.text = x['written_rep'][1:]
-        pos_text = 'suffix'
+        # assert x['written_rep'].startswith('-')
+        orth.text = x["written_rep"][1:]
+        pos_text = "suffix"
     else:
-        orth.text = x['written_rep']
-        pos_text = pos_mapping.get(x['part_of_speech'],
-                                   (x['part_of_speech'], None))[0]
+        orth.text = x["written_rep"]
+        pos_text = pos_mapping.get(x["part_of_speech"], (x["part_of_speech"], None))[0]
 
     # inflected forms
-    if x['inflected_forms']:
-        infl_form = SubElement(form, 'form', {'type': 'infl'})
-        for infl_form_row in x['inflected_forms']:
-            attrs = {'wikdict:show': 'true'} if infl_form_row['rank'] else {}
-            SubElement(infl_form, 'orth', attrs).text = infl_form_row['other_written']
+    if x["inflected_forms"]:
+        infl_form = SubElement(form, "form", {"type": "infl"})
+        for infl_form_row in x["inflected_forms"]:
+            attrs = {"wikdict:show": "true"} if infl_form_row["rank"] else {}
+            SubElement(infl_form, "orth", attrs).text = infl_form_row["other_written"]
 
     # gramGrp
-    gram_grp = Element('gramGrp')
+    gram_grp = Element("gramGrp")
     if pos_text:
-        pos = SubElement(gram_grp, 'pos')
+        pos = SubElement(gram_grp, "pos")
         pos.text = pos_text
-    if x['gender']:
-        gen = SubElement(gram_grp, 'gen')
-        gen.text = gender_mapping[x['gender'].lower()]
+    if x["gender"]:
+        gen = SubElement(gram_grp, "gen")
+        gen.text = gender_mapping[x["gender"].lower()]
     if list(gram_grp):
         entry.append(gram_grp)
 
@@ -277,13 +307,11 @@ def single_tei_entry(x, to_lang):
 
 
 def get_tei_entries_as_xml(from_lang, to_lang):
-    """ Get all entries as xml string
+    """Get all entries as xml string
 
     Keeping them as XML objects would use much more memory
     """
-    conn = sqlite3.connect(
-        'dictionaries/generic/%s.sqlite3'
-        % from_lang)
+    conn = sqlite3.connect("dictionaries/generic/%s.sqlite3" % from_lang)
     conn.row_factory = sqlite3.Row
     entries_xml_text_list = []
     headwords = 0
@@ -291,22 +319,21 @@ def get_tei_entries_as_xml(from_lang, to_lang):
         entry = single_tei_entry(x, to_lang)
 
         indent(entry, level=2)
-        entries_xml_text_list.append(
-            tostring(entry, 'utf-8').decode('utf-8')
-        )
+        entries_xml_text_list.append(tostring(entry, "utf-8").decode("utf-8"))
         headwords += 1
         if headwords % 2000 == 0:
-            print('.', end='', flush=True)
+            print(".", end="", flush=True)
     print()
 
-    entries_xml_text = ''.join(entries_xml_text_list)
+    entries_xml_text = "".join(entries_xml_text_list)
     return entries_xml_text, headwords
 
 
 def write_tei_dict(from_lang, to_lang):
     print(from_lang, to_lang)
-    pos_usage = ''.join('<item ana="{1}">{0}</item>'.format(*pos)
-                        for pos in list(pos_mapping.values()))
+    pos_usage = "".join(
+        '<item ana="{1}">{0}</item>'.format(*pos) for pos in list(pos_mapping.values())
+    )
 
     # get entries, this is where most work is done
     entries, headwords = get_tei_entries_as_xml(from_lang, to_lang)
@@ -314,48 +341,55 @@ def write_tei_dict(from_lang, to_lang):
         return
 
     if headwords >= 10000:
-        status = 'big enough to be useful'
+        status = "big enough to be useful"
     elif headwords < 1000:
-        status = 'too small'
+        status = "too small"
     else:
-        status = 'unknown'
+        status = "unknown"
 
     # prepare template
-    register_namespace('', 'http://www.tei-c.org/ns/1.0')
-    register_namespace('wikdict', 'http://www.wikdict.com/ns/1.0')
+    register_namespace("", "http://www.tei-c.org/ns/1.0")
+    register_namespace("wikdict", "http://www.wikdict.com/ns/1.0")
     today = datetime.date.today().isoformat()
-    version = today.replace('-', '.')
-    tei_template_xml = XML(tei_template.format(
-        from_name=language_names[from_lang],
-        to_name=language_names[to_lang], headwords=headwords,
-        from_lang=from_lang,
-        today=today, version=version,
-        pos_usage=pos_usage, status=status,
-    ))
+    version = today.replace("-", ".")
+    tei_template_xml = XML(
+        tei_template.format(
+            from_name=language_names[from_lang],
+            to_name=language_names[to_lang],
+            headwords=headwords,
+            from_lang=from_lang,
+            today=today,
+            version=version,
+            pos_usage=pos_usage,
+            status=status,
+        )
+    )
     indent(tei_template_xml)
 
     # render xml and add entries
-    rendered_template = tostring(tei_template_xml, 'utf-8').decode('utf-8')
+    rendered_template = tostring(tei_template_xml, "utf-8").decode("utf-8")
     # if we don't add the dummy, the namespace is stripped, since no elements are in the XML, yet
-    rendered_template = rendered_template.replace('<wikdict:dummy />', '')
+    rendered_template = rendered_template.replace("<wikdict:dummy />", "")
     complete_tei = rendered_template.format(
         entries=entries,
     )
 
     # write to file and add declarations
-    out_dir = 'dictionaries/tei' + ('small/' if headwords < 5000 else '')
+    out_dir = "dictionaries/tei" + ("small/" if headwords < 5000 else "")
     os.makedirs(out_dir, exist_ok=True)
-    out_filename = '{}/{}-{}.tei'.format(
-        out_dir,
-        language_codes3[from_lang],
-        language_codes3[to_lang])
-    with codecs.open(out_filename, 'w', 'utf-8') as out_file:
-        out_file.write("""
+    out_filename = "{}/{}-{}.tei".format(
+        out_dir, language_codes3[from_lang], language_codes3[to_lang]
+    )
+    with codecs.open(out_filename, "w", "utf-8") as out_file:
+        out_file.write(
+            """
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/css" href="freedict-dictionary.css"?>
 <?oxygen RNGSchema="freedict-P5.rng" type="xml"?>
 <!DOCTYPE TEI SYSTEM "freedict-P5.dtd">
-        """.strip() + '\n')
+        """.strip()
+            + "\n"
+        )
         out_file.write(complete_tei)
 
 
@@ -365,21 +399,21 @@ def write_dict_pair(from_lang, to_lang):
 
 
 def main():
-    if len(sys.argv) == 2 and sys.argv[1] == 'all':
+    if len(sys.argv) == 2 and sys.argv[1] == "all":
         for from_lang, to_lang in permutations(supported_langs, 2):
             write_dict_pair(from_lang, to_lang)
     elif len(sys.argv) == 3:
         from_lang, to_lang = sys.argv[1:]
-        #import cProfile
-        #cProfile.run('write_dict_pair(from_lang, to_lang)', sort='cumtime')
-        #cProfile.run('get_tei_entries_as_xml("de", "fr")', sort='tottime')
+        # import cProfile
+        # cProfile.run('write_dict_pair(from_lang, to_lang)', sort='cumtime')
+        # cProfile.run('get_tei_entries_as_xml("de", "fr")', sort='tottime')
         write_dict_pair(from_lang, to_lang)
     else:
-        print('Usage: %s [FROM_LANG] [TO_LANG]' % sys.argv[0])
-        print('    or %s all' % sys.argv[0])
+        print("Usage: %s [FROM_LANG] [TO_LANG]" % sys.argv[0])
+        print("    or %s all" % sys.argv[0])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
 # validate

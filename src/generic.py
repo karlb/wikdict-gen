@@ -4,7 +4,8 @@ from infer import AggByScore
 
 def translation(conn, lang):
     conn.execute("DROP TABLE IF EXISTS main.translation")
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE translation AS
         WITH lang_trans AS (
             SELECT lexentry, sense_num, sense,
@@ -26,8 +27,11 @@ def translation(conn, lang):
                 WHERE is_good
             )
           )
-    """, lang.split('-'))
-    conn.executescript("""
+    """,
+        lang.split("-"),
+    )
+    conn.executescript(
+        """
         DROP VIEW IF EXISTS main.translation_grouped;
         CREATE VIEW translation_grouped AS
         SELECT lexentry, written_rep, min(sense_num) AS min_sense_num,
@@ -40,13 +44,15 @@ def translation(conn, lang):
             ORDER BY lexentry, written_rep, trans_list, sense_num, score DESC
         )
         GROUP BY lexentry, written_rep, trans_list
-    """)
+    """
+    )
 
 
 def simple_translation(conn, lang):
     conn.create_aggregate("agg_by_score", 2, AggByScore)
     conn.execute("""DROP TABLE IF EXISTS simple_translation""")
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE simple_translation AS
         SELECT from_vocable AS written_rep,
             agg_by_score(to_vocable, max_score) AS trans_list,
@@ -60,21 +66,23 @@ def simple_translation(conn, lang):
             ORDER BY from_vocable, coalesce(min(sense_num), '999'), max(score) DESC
         ) LEFT JOIN lang.rel_importance ON (from_vocable = lang.rel_importance.written_rep_guess)
         GROUP BY from_vocable
-        """, lang.split('-'))
+        """,
+        lang.split("-"),
+    )
 
 
 def do(lang, sql, only, **kwargs):
-    assert '-' in lang, 'No generic processing step for single lang'
-    from_lang, _ = lang.split('-')
+    assert "-" in lang, "No generic processing step for single lang"
+    from_lang, _ = lang.split("-")
     targets = [
-        ('translation', translation),
-        ('simple_translation', simple_translation),
+        ("translation", translation),
+        ("simple_translation", simple_translation),
     ]
 
     make_targets(
         lang,
-        in_path='processed',
-        out_path='generic',
+        in_path="processed",
+        out_path="generic",
         targets=targets,
         attach=[
             "'dictionaries/infer.sqlite3' AS infer",
@@ -86,9 +94,8 @@ def do(lang, sql, only, **kwargs):
 
 
 def add_subparsers(subparsers):
-    process = subparsers.add_parser(
-        'generic', help='')
-    process.add_argument('lang')
+    process = subparsers.add_parser("generic", help="")
+    process.add_argument("lang")
     process.set_defaults(func=do)
-    process.add_argument('--sql')
-    process.add_argument('--only')
+    process.add_argument("--sql")
+    process.add_argument("--only")

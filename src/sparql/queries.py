@@ -8,30 +8,30 @@ from itertools import chain
 
 from languages import language_codes3
 
-namespace_re = re.compile(r'^(?:http://kaiko.getalp.org/dbnary/|http://.*#)')
-fr_sense_re = re.compile(r'^(.*?)[.]?\s*(?:\(\d+\)|\|\d+)?:?$')
+namespace_re = re.compile(r"^(?:http://kaiko.getalp.org/dbnary/|http://.*#)")
+fr_sense_re = re.compile(r"^(.*?)[.]?\s*(?:\(\d+\)|\|\d+)?:?$")
 
 translation_query_type = {
-    'de': 'sense',
-    'en': 'gloss',
-    'fr': 'gloss',
-    'pl': 'sense',
-    'sv': 'gloss',
-    'es': 'sense',
-    'pt': 'gloss',
-    'fi': 'sense',
-    'el': 'gloss',
-    'ru': 'sense',
-    'tr': 'sense',
-    'ja': 'gloss',
-    'bg': 'gloss',
-    'it': 'gloss',
-    'id': 'gloss',
-    'nl': 'gloss',
-    'lt': 'gloss',
-    'la': 'gloss',
-    'mg': 'gloss',
-    'no': 'gloss',
+    "de": "sense",
+    "en": "gloss",
+    "fr": "gloss",
+    "pl": "sense",
+    "sv": "gloss",
+    "es": "sense",
+    "pt": "gloss",
+    "fi": "sense",
+    "el": "gloss",
+    "ru": "sense",
+    "tr": "sense",
+    "ja": "gloss",
+    "bg": "gloss",
+    "it": "gloss",
+    "id": "gloss",
+    "nl": "gloss",
+    "lt": "gloss",
+    "la": "gloss",
+    "mg": "gloss",
+    "no": "gloss",
 }
 
 form_query = """
@@ -137,7 +137,7 @@ basic_entry_pronun_query = """
 
 
 translation_query = {
-    'sense': r"""
+    "sense": r"""
         SELECT ?lexentry
             ?sense_num
             ?def_value AS ?sense
@@ -158,7 +158,7 @@ translation_query = {
             # FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
     """,
-    'gloss': """
+    "gloss": """
         SELECT ?lexentry
             '' AS ?sense_num
             ?gloss AS ?sense
@@ -174,7 +174,7 @@ translation_query = {
             OPTIONAL {?trans dbnary:gloss [rdf:value ?gloss] }
           #  FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
-    """
+    """,
 }
 
 
@@ -211,11 +211,13 @@ importance_query = """
 
 
 def make_url(query, **fmt_args):
-    assert fmt_args['limit'] <= 1048576, 'Virtuoso does not support more than 1048576 results'
-    #server = 'http://kaiko.getalp.org'
-    server = 'http://localhost:8890'
-    if 'ORDER BY' not in query:
-        query += '\nORDER BY 1'
+    assert (
+        fmt_args["limit"] <= 1048576
+    ), "Virtuoso does not support more than 1048576 results"
+    # server = 'http://kaiko.getalp.org'
+    server = "http://localhost:8890"
+    if "ORDER BY" not in query:
+        query += "\nORDER BY 1"
     query = """
         SELECT *
         WHERE {
@@ -223,17 +225,25 @@ def make_url(query, **fmt_args):
         }
         OFFSET %%(offset)s
         LIMIT %%(limit)s
-    """ % (query)
+    """ % (
+        query
+    )
     for key, val in list(fmt_args.items()):
-        if key.endswith('lang'):
-            fmt_args[key + '3'] = language_codes3[val]
-    url = server + '/sparql?' + urlencode({
-        'default-graph-uri': '',
-        'query': query % fmt_args,
-        'format': 'application/json',
-        'timeout': 0,
-    })
-    #print query % fmt_args
+        if key.endswith("lang"):
+            fmt_args[key + "3"] = language_codes3[val]
+    url = (
+        server
+        + "/sparql?"
+        + urlencode(
+            {
+                "default-graph-uri": "",
+                "query": query % fmt_args,
+                "format": "application/json",
+                "timeout": 0,
+            }
+        )
+    )
+    # print query % fmt_args
     return url
 
 
@@ -246,59 +256,60 @@ def page_through_results(query, limit, **kwargs):
         except urllib.error.HTTPError as e:
             print(e.read())
             raise
-        #raw_json = response.read()
-        #with open('debug.json', 'w') as f:
+        # raw_json = response.read()
+        # with open('debug.json', 'w') as f:
         #    f.write(raw_json)
-        #raw_json = raw_json.decode("unicode_escape")
-        #raw_json = open('debug.json').read()
-        #data = json.loads(raw_json)
+        # raw_json = raw_json.decode("unicode_escape")
+        # raw_json = open('debug.json').read()
+        # data = json.loads(raw_json)
 
         # This should be
         #    data = json.load(response)
         # but virtuoso generates invalid json, so we have to work around it.
         # See https://github.com/dbpedia/extraction-framework/issues/318
         from codecs import raw_unicode_escape_decode
+
         json_data = raw_unicode_escape_decode(response.read())[0]
         data = json.loads(json_data)
 
         global cols
-        cols = data['head']['vars']
-        result = data['results']['bindings']
+        cols = data["head"]["vars"]
+        result = data["results"]["bindings"]
         yield result
         if len(result) < limit:
             break
         else:
             offset += limit
-            print('.')
+            print(".")
 
 
 def create_table(conn, table_name, first_result=None):
-    sql_filename = 'src/sql/sparql/{}.sql'.format(table_name)
+    sql_filename = "src/sql/sparql/{}.sql".format(table_name)
     if first_result:
         sql_types = {
-            'http://www.w3.org/2001/XMLSchema#integer': 'int',
-            'http://www.w3.org/2001/XMLSchema#decimal': 'real',
-            'http://www.w3.org/2001/XMLSchema#double': 'real',
-            'http://www.w3.org/2001/XMLSchema#string': 'text',
-            None: 'text',
+            "http://www.w3.org/2001/XMLSchema#integer": "int",
+            "http://www.w3.org/2001/XMLSchema#decimal": "real",
+            "http://www.w3.org/2001/XMLSchema#double": "real",
+            "http://www.w3.org/2001/XMLSchema#string": "text",
+            None: "text",
         }
         col_types = [
-            sql_types[
-                first_result.get(col_name, {}).get('datatype')
-            ]
+            sql_types[first_result.get(col_name, {}).get("datatype")]
             for col_name in cols
         ]
         sql = """
             DROP TABLE IF EXISTS {table_name};
             CREATE TABLE {table_name} ({col_def});
-        """.format(table_name=table_name,
-                   col_def=', '.join('"%s" %s' % col_desc
-                           for col_desc in zip(cols, col_types))
-                  )
+        """.format(
+            table_name=table_name,
+            col_def=", ".join(
+                '"%s" %s' % col_desc for col_desc in zip(cols, col_types)
+            ),
+        )
         # Save definition to file. This is required for cases where the query
         # returns no results, so that we can't determine the columns and types
         # from the result.
-        with open(sql_filename, 'w') as f:
+        with open(sql_filename, "w") as f:
             f.write(sql)
     else:
         with open(sql_filename) as f:
@@ -308,26 +319,26 @@ def create_table(conn, table_name, first_result=None):
 
 
 def get_query(table_name, query, **kwargs):
-    if 'lang' in kwargs:
-        lang = kwargs['lang']
+    if "lang" in kwargs:
+        lang = kwargs["lang"]
         db_name = lang
     else:
-        lang = kwargs['from_lang']
-        kwargs['lang'] = lang
-        db_name = '{}-{}'.format(kwargs['from_lang'], kwargs['to_lang'])
+        lang = kwargs["from_lang"]
+        kwargs["lang"] = lang
+        db_name = "{}-{}".format(kwargs["from_lang"], kwargs["to_lang"])
 
-    print('Fetch {} (SPARQL)'.format(table_name))
+    print("Fetch {} (SPARQL)".format(table_name))
     limit = int(5e5)
     batches = page_through_results(query, limit=limit, **kwargs)
     results = chain.from_iterable(batches)
-    path = 'dictionaries/raw'
+    path = "dictionaries/raw"
     os.makedirs(path, exist_ok=True)
-    conn = sqlite3.connect('%s/%s.sqlite3' % (path, db_name))
+    conn = sqlite3.connect("%s/%s.sqlite3" % (path, db_name))
 
     try:
         first_result = next(results)
     except StopIteration:
-        print('No results!')
+        print("No results!")
         create_table(conn, table_name)  # create empty table
         return
 
@@ -337,25 +348,25 @@ def get_query(table_name, query, **kwargs):
     create_table(conn, table_name, first_result)
 
     py_types = {
-        'http://www.w3.org/2001/XMLSchema#integer': int,
-        'http://www.w3.org/2001/XMLSchema#decimal': float,
-        'http://www.w3.org/2001/XMLSchema#double': float,
-        'http://www.w3.org/2001/XMLSchema#string': str,
+        "http://www.w3.org/2001/XMLSchema#integer": int,
+        "http://www.w3.org/2001/XMLSchema#decimal": float,
+        "http://www.w3.org/2001/XMLSchema#double": float,
+        "http://www.w3.org/2001/XMLSchema#string": str,
     }
 
     def postprocess_literal(col_name, value, **kwargs):
-        if lang == 'fr' and col_name == 'sense':
+        if lang == "fr" and col_name == "sense":
             # remove sense number references from the end of the gloss
             return fr_sense_re.match(value).group(1)
 
         return value
 
     postprocess = {
-        'literal': postprocess_literal,
-        'uri':
-            lambda col_name, value, **kwargs: namespace_re.sub('', value),
-        'typed-literal':
-            lambda col_name, value, datatype, **kwargs: py_types[datatype](value)
+        "literal": postprocess_literal,
+        "uri": lambda col_name, value, **kwargs: namespace_re.sub("", value),
+        "typed-literal": lambda col_name, value, datatype, **kwargs: py_types[datatype](
+            value
+        ),
     }
 
     def postprocess_row(row):
@@ -364,20 +375,20 @@ def get_query(table_name, query, **kwargs):
                 yield None
                 continue
             cell = row[col_name]
-            processed = postprocess[cell['type']](col_name, **cell)
+            processed = postprocess[cell["type"]](col_name, **cell)
             if isinstance(processed, str):
                 # The input contains some badly encoded characters.
                 # Replace these with ?-Symbols to avoid later errors
-                processed = processed.encode('utf-8', 'replace').decode()
+                processed = processed.encode("utf-8", "replace").decode()
             yield processed
 
-    print('Inserting into db')
+    print("Inserting into db")
     cur = conn.cursor()
-    cur.executemany("INSERT INTO %s VALUES (%s)" % (
-                        table_name, ', '.join(['?'] * len(cols))
-                     ),
-                     (list(postprocess_row(r)) for r in results))
-    print('Inserted', cur.rowcount, 'rows')
+    cur.executemany(
+        "INSERT INTO %s VALUES (%s)" % (table_name, ", ".join(["?"] * len(cols))),
+        (list(postprocess_row(r)) for r in results),
+    )
+    print("Inserted", cur.rowcount, "rows")
 
     conn.commit()
     conn.close()

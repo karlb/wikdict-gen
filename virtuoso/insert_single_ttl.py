@@ -6,11 +6,11 @@ from subprocess import check_call, Popen, PIPE
 
 from languages import language_codes3
 
-os.chdir('ttl')
+os.chdir("ttl")
 lang = sys.argv[1]
 
 # call isql to do the actual loading
-print('load ' + lang)
+print("load " + lang)
 isql_code = """
     -- remove old prefix dcterms, since we want to bind it to 'dct', now (same as kaiko.getalp.org)
     DB.DBA.XML_REMOVE_NS_BY_PREFIX('dcterms', 2);
@@ -53,12 +53,13 @@ isql_code = """
     commit WORK;
     checkpoint;
     EXIT;
-""" % dict(lang=lang, lang3=language_codes3[lang], dir='/ttl')
-p = Popen(('docker exec -i wikdict-virtuoso isql-v'
-          ).split(' '), stdin=PIPE)
-p.communicate(input=bytes(isql_code, encoding='utf8'))
+""" % dict(
+    lang=lang, lang3=language_codes3[lang], dir="/ttl"
+)
+p = Popen(("docker exec -i wikdict-virtuoso isql-v").split(" "), stdin=PIPE)
+p.communicate(input=bytes(isql_code, encoding="utf8"))
 if p.returncode:
-    print('isql failed')
+    print("isql failed")
     exit(1)
 else:
-    print('success')
+    print("success")

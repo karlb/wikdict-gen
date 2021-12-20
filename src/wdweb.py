@@ -4,13 +4,12 @@ import json
 from helper import make_targets
 
 
-TOKENIZER = defaultdict(lambda: 'unicode61', {
-    'en': 'porter'
-})
+TOKENIZER = defaultdict(lambda: "unicode61", {"en": "porter"})
 
 
 def make_vocable(conn, lang):
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.vocable;
         CREATE TABLE main.vocable AS
         SELECT DISTINCT
@@ -18,12 +17,14 @@ def make_vocable(conn, lang):
             lower(written_rep) AS written_lower
         FROM processed.entry;
         CREATE INDEX vocable_lower_idx ON vocable(written_lower);
-    """)
+    """
+    )
 
 
 def make_entry(conn, lang):
-    conn.load_extension('lib/spellfix1')
-    conn.executescript("""
+    conn.load_extension("lib/spellfix1")
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.entry;
         CREATE TABLE main.entry AS
         SELECT entry.*, display, display_addition
@@ -48,13 +49,15 @@ def make_entry(conn, lang):
                        rel_score * 100 AS score
                 FROM rel_importance
             ) USING (written_rep)
-    """)
+    """
+    )
 
 
 def make_display(conn, lang):
     conn.execute("DROP TABLE IF EXISTS main.lexentry_display")
-    if lang == 'de':
-        conn.execute("""
+    if lang == "de":
+        conn.execute(
+            """
             CREATE TABLE lexentry_display AS
             WITH noun AS (
                 SELECT lexentry, other_written, number
@@ -79,16 +82,20 @@ def make_display(conn, lang):
                 GROUP BY 1
                 HAVING count(DISTINCT other_written) = 1
             ) USING (lexentry)
-        """)
+        """
+        )
     else:
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE lexentry_display AS
             SELECT '' AS lexentry, '' AS display, '' AS display_addition
-        """)
+        """
+        )
 
 
 def make_translation(conn, lang_pair):
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.translation;
         CREATE TABLE main.translation AS
         SELECT lexentry, written_rep, part_of_speech, sense_list,
@@ -103,29 +110,33 @@ def make_translation(conn, lang_pair):
         ORDER BY lexentry, min_sense_num;
         --CREATE INDEX main.translation_lexentry_idx ON translation('lexentry');
         CREATE INDEX main.translation_written_rep_idx ON translation('written_rep');
-    """)
+    """
+    )
 
 
 def _list_to_array(pipe_list):
-    """ Convert a pipe separated list into a json array """
+    """Convert a pipe separated list into a json array"""
     if pipe_list is None:
         return
-    return json.dumps(pipe_list.split(' | '))
+    return json.dumps(pipe_list.split(" | "))
 
 
 def make_translation_block(conn, lang_pair):
-    """ Combine all information for a bilingual dict entry in a single row """
-    conn.create_function('list_to_array', 1, _list_to_array)
+    """Combine all information for a bilingual dict entry in a single row"""
+    conn.create_function("list_to_array", 1, _list_to_array)
 
     # Improved speed in following queries
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TEMPORARY TABLE translation_grouped AS
         SELECT * FROM generic.translation_grouped;
 
         CREATE INDEX temp.translation_grouped_written_rep_idx ON translation_grouped(written_rep);
-    """);
+    """
+    )
 
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS idioms;
         CREATE VIRTUAL TABLE main.idioms USING fts4(
             written_rep, translations, importance,
@@ -140,9 +151,11 @@ def make_translation_block(conn, lang_pair):
             sum(score * importance) AS importance
         FROM translation_grouped
         GROUP BY written_rep;
-    """)
+    """
+    )
 
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.translation_block;
         CREATE TABLE main.translation_block AS
         SELECT *, 
@@ -197,11 +210,13 @@ def make_translation_block(conn, lang_pair):
         ) grouped_forms USING (lexentry);
 
         CREATE INDEX main.translation_block_written_rep_idx ON translation_block('written_rep');
-    """)
+    """
+    )
 
 
 def make_simple_translation(conn, lang_pair):
-    conn.executescript("""
+    conn.executescript(
+        """
         DROP TABLE IF EXISTS main.simple_translation;
 
         CREATE TABLE main.simple_translation AS
@@ -212,14 +227,16 @@ def make_simple_translation(conn, lang_pair):
 
         CREATE INDEX main.simple_translation_index
             ON simple_translation('written_rep');
-    """)
+    """
+    )
 
 
 def make_search_index(conn, lang_pair):
-    from_lang, _ = lang_pair.split('-')
+    from_lang, _ = lang_pair.split("-")
 
     # main search index
-    conn.executescript("""
+    conn.executescript(
+        """
         -- search table
         DROP TABLE IF EXISTS main.search_trans;
         CREATE VIRTUAL TABLE main.search_trans USING fts4(
@@ -237,17 +254,20 @@ def make_search_index(conn, lang_pair):
         WHERE written_rep IN (
             SELECT written_rep FROM main.translation
         );
-    """.format(TOKENIZER[from_lang]))
+    """.format(
+            TOKENIZER[from_lang]
+        )
+    )
 
     # optimize
-    conn.execute(
-        "INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
+    conn.execute("INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
 
 
 def make_search_by_form(conn, lang_pair):
-    from_lang, _ = lang_pair.split('-')
+    from_lang, _ = lang_pair.split("-")
 
-    conn.executescript("""
+    conn.executescript(
+        """
         -- search table
         DROP TABLE IF EXISTS main.search_by_form;
         CREATE VIRTUAL TABLE main.search_by_form USING fts4(
@@ -264,16 +284,19 @@ def make_search_by_form(conn, lang_pair):
         UNION
         SELECT written_rep, translation_block.rowid, 1 AS form_importance
         FROM translation_block;
-    """.format(TOKENIZER[from_lang]))
+    """.format(
+            TOKENIZER[from_lang]
+        )
+    )
 
     # optimize
-    conn.execute(
-        "INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
+    conn.execute("INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
 
 
 def update_stats(conn, lang_pair):
-    from_lang, to_lang = lang_pair.split('-')
-    conn.execute("""
+    from_lang, to_lang = lang_pair.split("-")
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS wikdict.lang_pair (
             from_lang text,
             to_lang text,
@@ -282,11 +305,16 @@ def update_stats(conn, lang_pair):
             score int,
             PRIMARY KEY (from_lang, to_lang)
         );
-    """)
-    conn.execute("""
+    """
+    )
+    conn.execute(
+        """
         DELETE FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
-    """, [from_lang, to_lang])
-    conn.execute("""
+    """,
+        [from_lang, to_lang],
+    )
+    conn.execute(
+        """
         INSERT INTO wikdict.lang_pair(from_lang, to_lang,
             translations, forms, score)
         SELECT ?, ?, translations,
@@ -296,48 +324,49 @@ def update_stats(conn, lang_pair):
                 sum(translation_score) AS score
             FROM main.translation
         )
-    """, [from_lang, to_lang])
+    """,
+        [from_lang, to_lang],
+    )
 
 
 def vacuum(conn, lang):
     conn.isolation_level = None
-    conn.execute('VACUUM')
+    conn.execute("VACUUM")
 
 
 def do(lang, only, sql, **kwargs):
-    if '-' not in lang:
+    if "-" not in lang:
         attach = []
         targets = [
-            ('vocable', make_vocable),
-            ('display', make_display),
-            ('entry', make_entry),
-            ('vacuum', vacuum),
+            ("vocable", make_vocable),
+            ("display", make_display),
+            ("entry", make_entry),
+            ("vacuum", vacuum),
         ]
-        in_path = 'processed'
+        in_path = "processed"
     else:
-        (from_lang, to_lang) = lang.split('-')
+        (from_lang, to_lang) = lang.split("-")
         attach = [
-            "'dictionaries/generic/%s-%s.sqlite3' AS other_pair" % (
-                to_lang, from_lang),
+            "'dictionaries/generic/%s-%s.sqlite3' AS other_pair" % (to_lang, from_lang),
             "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
             "'dictionaries/processed/%s.sqlite3' AS other" % (to_lang),
             "'dictionaries/wdweb/wikdict.sqlite3' AS wikdict",
         ]
         targets = [
-            ('translation', make_translation),
-            ('simple_translation', make_simple_translation),
-            ('search_index', make_search_index),
-            ('translation_block', make_translation_block),
-            ('search_by_form', make_search_by_form),
-            ('vacuum', vacuum),
-            ('stats', update_stats),
+            ("translation", make_translation),
+            ("simple_translation", make_simple_translation),
+            ("search_index", make_search_index),
+            ("translation_block", make_translation_block),
+            ("search_by_form", make_search_by_form),
+            ("vacuum", vacuum),
+            ("stats", update_stats),
         ]
-        in_path = 'generic'
+        in_path = "generic"
 
     make_targets(
         lang,
         in_path=in_path,
-        out_path='wdweb',
+        out_path="wdweb",
         attach=attach,
         targets=targets,
         only=only,
@@ -346,9 +375,8 @@ def do(lang, only, sql, **kwargs):
 
 
 def add_subparsers(subparsers):
-    process = subparsers.add_parser(
-        'wdweb', help='generate lang db for wikdict-web')
-    process.add_argument('lang')
+    process = subparsers.add_parser("wdweb", help="generate lang db for wikdict-web")
+    process.add_argument("lang")
     process.set_defaults(func=do)
-    process.add_argument('--only')
-    process.add_argument('--sql')
+    process.add_argument("--only")
+    process.add_argument("--sql")

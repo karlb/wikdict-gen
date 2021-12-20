@@ -6,12 +6,12 @@ from infer import AggByScore
 
 
 class TestInfer(unittest.TestCase):
-
     def test_entity(self):
-        conn = sqlite3.connect(':memory:')
+        conn = sqlite3.connect(":memory:")
         conn.create_aggregate("agg_by_score", 2, AggByScore)
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT agg_by_score(trans, score)
             FROM (
                 SELECT 'Haus' AS trans, 30 AS score
@@ -20,12 +20,10 @@ class TestInfer(unittest.TestCase):
                 UNION ALL
                 SELECT 'Wohnung' AS trans, 100 AS score
             )
-        """)
-        self.assertEqual(
-            cur.fetchall(),
-            [('Wohnung | Haus', )]
+        """
         )
+        self.assertEqual(cur.fetchall(), [("Wohnung | Haus",)])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
