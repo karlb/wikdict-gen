@@ -25,7 +25,7 @@ test:
 	python3 -m unittest discover -s src
 
 clean:
-	rm dictionaries/*/*
+	rm -fr dictionaries
 
 distclean: clean
 	rm -fr venv
