@@ -61,8 +61,12 @@ class TestParseCleanup(unittest.TestCase):
             ("Voir [[sauter#fr|sauter]]", "Voir sauter"),
             ("[[bloc de béton]]", "bloc de béton"),
             ("[[ojentaa]] ([[käsi|käte]][[-nsa|nsä]])", "ojentaa (kätensä)"),
+            ("[[à tes souhaits!]]", "à tes souhaits!"),
+            ("ruoskia [[yhdeksänhäntäinen kissa|yhdeksänhäntäisellä kissalla]]", "ruoskia yhdeksänhäntäisellä kissalla"),
+            ("[[античен|Антична]]", "Антична"),
+            ("[[falsch positiv|falsch positives]]", "falsch positives"),
         ]:
-            with self.subTest():
+            with self.subTest(wiki):
                 self.assertEqual(clean_wiki_syntax(wiki), out)
 
     def test_dummy_sense(self):
