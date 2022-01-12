@@ -35,7 +35,8 @@ dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 	for langpair in ${ALL_PAIRS}; do src/run.py infer-collect $$langpair; done
 	src/run.py infer
 
-${ALL_RAW}: dictionaries/raw/%.sqlite3:
+.SECONDEXPANSION:
+${ALL_RAW}: dictionaries/raw/%.sqlite3: virtuoso/ttl/$$(firstword $$(subst -, ,%)).inserted
 	src/run.py raw $*
 
 ${ALL_PROCESSED_LANGS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3
