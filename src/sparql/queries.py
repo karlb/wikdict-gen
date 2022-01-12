@@ -210,6 +210,29 @@ importance_query = """
 """
 
 
+nym_query = """
+SELECT DISTINCT ?f ?nym ?t_rep
+  # Don't use ?t but only ?t_rep, since the *nyms don't link to a lexical entry. 
+  # ?t ?t_page ?f_rep   # extra columns for debugging
+WHERE {
+  VALUES ?nym {dbnary:synonym dbnary:hypernym dbnary:hyponym}
+
+  ?f ?nym ?t_page;
+     dct:language lexvo:%(lang3)s;
+     lexinfo:partOfSpeech ?f_pos.
+  ?t_page dbnary:describes ?t.
+  ?t ontolex:canonicalForm [ontolex:writtenRep ?t_rep];
+     lexinfo:partOfSpeech ?t_pos.
+
+  # Synonyms (and other *nyms) go from a lexical entry to a Wiktionary page. Since the target page can contain many different lexical entries, we limit the target entries (?t) to those which have the same part of speech as the source entry (?f)
+  FILTER (?f_pos = ?t_pos)
+
+  # For debugging only
+  #?f ontolex:canonicalForm [ontolex:writtenRep ?f_rep].
+}
+"""
+
+
 def make_url(query, **fmt_args):
     assert (
         fmt_args["limit"] <= 1048576

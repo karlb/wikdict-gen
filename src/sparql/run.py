@@ -3,10 +3,6 @@
 from . import queries as sparql
 
 
-def make_translation(from_lang, to_lang, **kwargs):
-    sparql.get_query("translation", query, from_lang=from_lang, to_lang=to_lang)
-
-
 def make_raw(lang, only):
     queries = {
         "form": sparql.form_query,
@@ -15,6 +11,7 @@ def make_raw(lang, only):
         "gender": sparql.basic_entry_gender_query,
         "pronun": sparql.basic_entry_pronun_query,
         "importance": sparql.importance_query,
+        "nym": sparql.nym_query,
     }
     for name, q in queries.items():
         if not only or only == name:
