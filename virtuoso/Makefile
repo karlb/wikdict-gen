@@ -1,3 +1,6 @@
+.PHONY: download gzip insert
+.DELETE_ON_ERROR:
+
 LANGS := bg de el en es fi fr id it ja la lt mg nl no pl pt ru sh sv tr ja
 
 all: download gzip insert
@@ -17,5 +20,3 @@ ttl/%.inserted: ttl/%_dbnary_ontolex.ttl.gz
 download:
 	wget -r -nd --timestamping --no-parent --accept '*.bz2' --directory-prefix=ttl http://kaiko.getalp.org/static/ontolex/latest/
 	ls -l ttl/*.bz2 --time-style=long-iso | awk '{print $$6}' | sort | uniq -c
-
-.PHONY: download gzip insert
