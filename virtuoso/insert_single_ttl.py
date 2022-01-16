@@ -36,7 +36,7 @@ isql_code = """
     DB.DBA.XML_SET_NS_DECL('dbnary-%(lang3)s',
                            'http://kaiko.getalp.org/dbnary/%(lang3)s', 2);
 
-    -- clea old data
+    -- clear old data
     SPARQL CLEAR GRAPH <http://kaiko.getalp.org/dbnary/%(lang3)s>;
     DELETE FROM DB.DBA.LOAD_LIST;
 

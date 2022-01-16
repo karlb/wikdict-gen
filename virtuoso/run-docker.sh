@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# If the container has already been run, start it with
+# docker container start wikdict-virtuoso -a
+
 docker run \
 	--name wikdict-virtuoso \
 	-p 8890:8890 -p 1111:1111 \
@@ -11,4 +14,5 @@ docker run \
 	-e VIRT_SPARQL_ResultSetMaxRows=0 \
 	-e VIRT_SPARQL_MaxQueryCostEstimationTime=0 \
 	-e VIRT_SPARQL_MaxQueryExecutionTime=0 \
+	--cpu-shares 512 \
 	tenforce/virtuoso
