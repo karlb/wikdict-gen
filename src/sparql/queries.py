@@ -152,8 +152,8 @@ translation_query = {
                    skos:definition [rdf:value ?def_value] .
             ?trans dbnary:isTranslationOf ?sense ;
                    dbnary:targetLanguage lexvo:%(to_lang3)s ;
-                   dbnary:writtenForm ?written_trans ;
-                   dbnary:gloss [dbnary:senseNumber ?tr_sense_num].
+                   dbnary:writtenForm ?written_trans.
+            OPTIONAL { ?trans dbnary:gloss [dbnary:senseNumber ?tr_sense_num] }
 
             # FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
         }
