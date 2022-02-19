@@ -98,9 +98,17 @@ braces_nocat = re.compile(r"\|(?:\d+ )?{{.*nocat=1")
 braces_notclosed = re.compile(r"{{[^}]+")
 
 
+def repeated_sub(regex, replacement, string):
+    """Repeat substituion as often as possible"""
+    while True:
+        string, n = double_brackets.subn(r"\1", string)
+        if n == 0:
+            return string
+
+
 def clean_wiki_syntax(x):
     x = noise_at_start.sub("", x)
-    x = double_brackets.sub(r"\1", x)
+    x = repeated_sub(double_brackets, r"\1", x)
     x = bold_and_italics.sub("", x)
     x = braces_nocat.sub("", x)
     # remove when https://bitbucket.org/serasset/dbnary/issues/25 is fixed

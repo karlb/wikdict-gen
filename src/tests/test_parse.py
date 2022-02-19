@@ -62,9 +62,13 @@ class TestParseCleanup(unittest.TestCase):
             ("[[bloc de béton]]", "bloc de béton"),
             ("[[ojentaa]] ([[käsi|käte]][[-nsa|nsä]])", "ojentaa (kätensä)"),
             ("[[à tes souhaits!]]", "à tes souhaits!"),
-            ("ruoskia [[yhdeksänhäntäinen kissa|yhdeksänhäntäisellä kissalla]]", "ruoskia yhdeksänhäntäisellä kissalla"),
+            (
+                "ruoskia [[yhdeksänhäntäinen kissa|yhdeksänhäntäisellä kissalla]]",
+                "ruoskia yhdeksänhäntäisellä kissalla",
+            ),
             ("[[античен|Антична]]", "Антична"),
             ("[[falsch positiv|falsch positives]]", "falsch positives"),
+            ("[[[[gå]] av]]", "gå av"),
         ]:
             with self.subTest(wiki):
                 self.assertEqual(clean_wiki_syntax(wiki), out)
