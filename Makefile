@@ -95,6 +95,7 @@ dictionaries/stardict/%:
 	mkdir -p $@ 
 	pyglossary $< $@/stardict --write-format Stardict
 
+# These will be missing prerequisites in some cases (small dicts), just use `make --keep-going`.
 kobo: $(shell grep kobo/dicthtml generated.mk | cut -d: -f1)
 stardict: $(shell grep stardict generated.mk | awk -F ':' '{print $$1 ".zip"}')
 
