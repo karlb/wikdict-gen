@@ -18,6 +18,9 @@ from languages import language_names, language_codes3
 from helper import supported_langs
 
 
+INCLUDE_INFLECTED = True
+
+
 def indent(elem, level=0):
     i = "\n" + level * "  "
     if elem:
@@ -284,7 +287,7 @@ def single_tei_entry(x, to_lang):
         pos_text = pos_mapping.get(x["part_of_speech"], (x["part_of_speech"], None))[0]
 
     # inflected forms
-    if x["inflected_forms"]:
+    if x["inflected_forms"] and INCLUDE_INFLECTED:
         infl_form = SubElement(form, "form", {"type": "infl"})
         for infl_form_row in x["inflected_forms"]:
             attrs = {"wikdict:show": "true"} if infl_form_row["rank"] else {}
