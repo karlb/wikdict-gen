@@ -375,7 +375,7 @@ def write_tei_dict(from_lang, to_lang):
     )
 
     # write to file and add declarations
-    out_dir = "dictionaries/tei" + ("small/" if headwords < 5000 else "")
+    out_dir = "dictionaries/tei" + ("/small" if headwords < 5000 else "")
     os.makedirs(out_dir, exist_ok=True)
     out_filename = "{}/{}-{}.tei".format(
         out_dir, language_codes3[from_lang], language_codes3[to_lang]
