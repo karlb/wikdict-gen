@@ -173,7 +173,7 @@ def make_translation_block(conn, lang_pair):
                 importance
             FROM
                 (
-                    SELECT lexentry,
+                    SELECT lexentry, written_rep,
                         json_group_array(json_object(
                             'senses', json(list_to_array(sense_list)),
                             'translations', json(list_to_array(trans_list))
@@ -185,10 +185,10 @@ def make_translation_block(conn, lang_pair):
                         FROM translation_grouped
                         ORDER BY lexentry, score DESC
                     )
-                    GROUP BY lexentry
+                    GROUP BY lexentry, written_rep
                 ) translation_grouped 
                 LEFT JOIN (
-                    SELECT lexentry, written_rep, part_of_speech, gender, pronun_list
+                    SELECT lexentry, part_of_speech, gender, pronun_list
                     FROM entry
                 ) USING (lexentry)
             GROUP BY lexentry, written_rep, part_of_speech, gender, pronun_list
