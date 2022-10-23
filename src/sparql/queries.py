@@ -9,7 +9,7 @@ from itertools import chain
 from languages import language_codes3
 
 namespace_re = re.compile(r"^(?:http://kaiko.getalp.org/dbnary/|http://.*#)")
-fr_sense_re = re.compile(r"^(.*?)[.]?\s*(?:\(\d+\)|\|\d+)?:?$")
+fr_sense_re = re.compile(r"^(.*?)[.]?\s*(?:\(\d+\)|\|\d+)?:?$", re.DOTALL)
 
 translation_query_type = {
     "de": "sense",
@@ -380,7 +380,9 @@ def get_query(table_name, query, **kwargs):
     def postprocess_literal(col_name, value, **kwargs):
         if lang == "fr" and col_name == "sense":
             # remove sense number references from the end of the gloss
-            return fr_sense_re.match(value).group(1)
+            match = fr_sense_re.match(value)
+            assert match, f"malformed gloss: {value!r}"
+            return match.group(1)
 
         return value
 
