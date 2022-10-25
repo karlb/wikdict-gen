@@ -1,6 +1,7 @@
 import re
 
 from helper import make_targets
+from languages import language_codes3
 import parse
 
 sense_num_re = re.compile(r"(\d+)(\w)?")
@@ -194,6 +195,7 @@ def make_importance(conn, lang):
            --       things, too.
            replace(substr(vocable, 5), '_', ' ') AS written_rep_guess
         FROM raw.importance
+        WHERE substr(vocable, 0, 4) = '%(lang3)s'
         GROUP BY vocable;
         CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
 
@@ -212,6 +214,7 @@ def make_importance(conn, lang):
             )
         );
     """
+        % dict(lang3=language_codes3[lang])
     )
 
 
