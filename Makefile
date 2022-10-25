@@ -1,3 +1,4 @@
+MAKEFLAGS += --no-builtin-rules
 # Update with `python3 src/helper.py makefile > generated.mk`
 include generated.mk
 
