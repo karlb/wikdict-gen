@@ -129,7 +129,7 @@ def is_dummy_sense(sense, lang):
 
 def make_inflection_cleaner(lang):
     if lang == "de":
-        pronouns = re.compile(r"^(er/sie/es|ich|du|er|sie|es|wir|ihr|sie)\s+")
+        pronouns = re.compile(r"^(er/sie/es|ich|du|er|sie|es|wir|ihr|sie)\s+(ist\s+)?")
         imperative_exclamation_mark = re.compile("!$")
         remove_articles = re.compile(r"^(der|die|das)\s+")
         return lambda x: remove_articles.sub(

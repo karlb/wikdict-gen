@@ -103,6 +103,7 @@ class TestCleanInflection(unittest.TestCase):
     def test_de(self):
         cleaner = make_inflection_cleaner("de")
         self.assertEqual(cleaner("er/sie/es geht"), "geht")
+        self.assertEqual(cleaner("es ist schön"), "schön")
         self.assertEqual(cleaner("wirf!"), "wirf")
         self.assertEqual(cleaner("die Bäume"), "Bäume")
 
