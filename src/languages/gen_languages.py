@@ -11,5 +11,5 @@ with open("languages/languages.tsv") as f:
         language_codes3[fields[3]] = fields[4]
 
 with open("languages/__init__.py", "w") as f:
-    f.write(u"language_names = %r\n\n" % language_names)
-    f.write(u"language_codes3 = %r\n\n" % language_codes3)
+    f.write("language_names = %r\n\n" % language_names)
+    f.write("language_codes3 = %r\n\n" % language_codes3)
