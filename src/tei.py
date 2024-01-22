@@ -4,6 +4,7 @@ import sys
 import sqlite3
 import datetime
 import codecs
+import time
 from itertools import groupby, permutations
 from xml.etree.cElementTree import (
     Element,
@@ -18,7 +19,7 @@ from languages import language_names, language_codes3
 from helper import supported_langs
 
 
-INCLUDE_INFLECTED = True
+INCLUDE_INFLECTED = False
 
 
 def indent(elem, level=0):
@@ -152,12 +153,40 @@ def list_split(l):
     return l.split(" | ")
 
 
+SHOW_TIMINGS = False
+
+
+def measured_execute(conn, query, *args, **kwargs):
+    start = time.time()
+    # for line in conn.execute("EXPLAIN QUERY PLAN " + query, *args, **kwargs):
+    #     print(dict(line))
+    # return []
+    ret_val = conn.execute(query, *args, **kwargs)
+    duration = time.time() - start
+    timing_dict = query_timings.setdefault(
+        query,
+        {
+            "total_time": 0,
+            "max_time": 0,
+            "num_calls": 0,
+        },
+    )
+    timing_dict["total_time"] += duration
+    timing_dict["num_calls"] += 1
+    if duration > timing_dict["max_time"]:
+        timing_dict["max_time"] = duration
+    return ret_val
+
+
 def get_translations(from_lang, to_lang):
+    global query_timings
+    query_timings = {}
     conn = sqlite3.connect(
-        "file:dictionaries/generic/%s-%s.sqlite3?mode=ro" % (from_lang, to_lang),
+        "file:dictionaries/wdweb/%s-%s.sqlite3?mode=ro" % (from_lang, to_lang),
         uri=True,
     )
     conn.row_factory = sqlite3.Row
+
     conn.execute(
         "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang" % from_lang
     )
@@ -171,8 +200,9 @@ def get_translations(from_lang, to_lang):
     """
         )
     )[0]
+    measured_exec = lambda *args, **kwargs: measured_execute(conn, *args, **kwargs)
     conn.execute("BEGIN")
-    conn.execute("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
+    measured_exec("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
 
     expected_good_translations = 50000
     min_translation_score = round(
@@ -184,7 +214,7 @@ def get_translations(from_lang, to_lang):
             good_translations, min_translation_score
         )
     )
-    translations = conn.execute(
+    translations = measured_exec(
         """
         SELECT lexentry,
             t.written_rep, t.sense_list, t.trans_list,
@@ -227,7 +257,7 @@ def get_translations(from_lang, to_lang):
                 )
 
         entry["inflected_forms"] = list(
-            conn.execute(
+            measured_exec(
                 """
             SELECT other_written, min(rank) AS rank
             FROM form f
@@ -243,6 +273,11 @@ def get_translations(from_lang, to_lang):
 
     # We create an index and don't want to keep it in the db.
     conn.rollback()
+
+    if SHOW_TIMINGS:
+        for query, timing in query_timings.items():
+            print(query)
+            print(timing | {"avg_time": timing["total_time"] / timing["num_calls"]})
 
 
 def add_senses(entry, x, to_lang, is_suffix):
