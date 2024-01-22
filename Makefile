@@ -17,7 +17,7 @@ ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LAN
 ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
 all: venv wdweb check
-raw: ${ALL_RAW}
+raw: ${ALL_RAW} raw-check
 processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
 wdweb: ${ALL_WDWEB_LANGS} ${ALL_WDWEB_PAIRS}
@@ -39,6 +39,9 @@ dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 .SECONDEXPANSION:
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: virtuoso/ttl/$$(firstword $$(subst -, ,%)).inserted
 	src/run.py raw $*
+
+raw-check:
+	for f in dictionaries/raw/*-*.sqlite3 ; do translations=$$(echo "SELECT count(*) FROM translation" | sqlite3 -noheader $$f) ; [ $$translations -eq 0 ] && echo "$$f has no translations!" || true ; done
 
 ${ALL_PROCESSED_LANGS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3
 	src/run.py process $*
