@@ -196,7 +196,7 @@ def get_translations(from_lang, to_lang):
     good_translations = next(
         conn.execute(
             """
-        SELECT count(*) FROM translation WHERE score >= 100
+        SELECT count(*) FROM translation WHERE translation_score >= 100
     """
         )
     )[0]
@@ -204,7 +204,7 @@ def get_translations(from_lang, to_lang):
     conn.execute("BEGIN")
     measured_exec("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
 
-    expected_good_translations = 50000
+    expected_good_translations = 45000
     min_translation_score = round(
         (good_translations - 1000) / expected_good_translations * 100
     )
@@ -219,9 +219,9 @@ def get_translations(from_lang, to_lang):
         SELECT lexentry,
             t.written_rep, t.sense_list, t.trans_list,
             e.gender, e.part_of_speech, e.pronun_list
-        FROM translation_grouped t
+        FROM translation t
              JOIN prod_lang.entry e USING (lexentry)
-        WHERE score >= ?
+        WHERE translation_score >= ?
         ORDER BY t.written_rep, e.part_of_speech, e.gender, e.pronun_list, t.min_sense_num
     """,
         [min_translation_score],
