@@ -90,6 +90,8 @@ release-download:
 
 release-tei:
 	rsync -avz --progress -e ssh dictionaries/tei/* www.wikdict.com:hosts/download/dictionaries/tei/recommended
+release-tei-noinfl:
+	rsync -avz --progress -e ssh dictionaries/tei/* www.wikdict.com:hosts/download/dictionaries/tei/no-infl
 
 dictionaries/kobo/dicthtml-%.zip: 
 	pyglossary $< $@ --write-format Kobo
