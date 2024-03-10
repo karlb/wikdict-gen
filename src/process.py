@@ -197,14 +197,13 @@ def make_importance(conn, lang):
         FROM raw.importance
         WHERE substr(vocable, 0, 4) = '%(lang3)s'
         GROUP BY vocable;
-        CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
 
         -- When searching in two languages, the more popular one will have
         -- the higher importance scores for words. To show at least some
         -- results from the less poplular language, we normalize the scores
         -- for the typeahead and similar features
-        DROP VIEW IF EXISTS rel_importance;
-        CREATE VIEW rel_importance AS
+        DROP TABLE IF EXISTS main.rel_importance;
+        CREATE TABLE rel_importance AS
         SELECT vocable, score, score / high_score AS rel_score, written_rep_guess
         FROM importance, (
             SELECT avg(score) AS high_score
@@ -213,6 +212,8 @@ def make_importance(conn, lang):
                 ORDER BY score DESC LIMIT 10000
             )
         );
+        CREATE UNIQUE INDEX imp_unique_vocable ON importance(vocable);
+        CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
     """
         % dict(lang3=language_codes3[lang])
     )
