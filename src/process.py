@@ -149,9 +149,13 @@ def make_entry(conn, lang):
 
 
 def make_form(conn, lang):
-    conn.create_function("clean_wiki_syntax", 1, parse.clean_wiki_syntax)
-    conn.create_function("clean_html", 1, parse.html_parser.parse)
-    conn.create_function("clean_inflection", 1, parse.make_inflection_cleaner(lang))
+    conn.create_function(
+        "clean_wiki_syntax", 1, parse.clean_wiki_syntax, deterministic=True
+    )
+    conn.create_function("clean_html", 1, parse.html_parser.parse, deterministic=True)
+    conn.create_function(
+        "clean_inflection", 1, parse.make_inflection_cleaner(lang), deterministic=True
+    )
     conn.executescript(
         """
         DROP TABLE IF EXISTS main.form;
@@ -225,9 +229,11 @@ def make_translation(conn, lang):
     def parse_sense_with_lang(x):
         return parse_sense(x, from_lang)
 
-    conn.create_function("parse_sense_num", 1, parse_sense_num)
-    conn.create_function("parse_sense", 1, parse_sense_with_lang)
-    conn.create_function("clean_wiki_syntax", 1, parse.clean_wiki_syntax)
+    conn.create_function("parse_sense_num", 1, parse_sense_num, deterministic=True)
+    conn.create_function("parse_sense", 1, parse_sense_with_lang, deterministic=True)
+    conn.create_function(
+        "clean_wiki_syntax", 1, parse.clean_wiki_syntax, deterministic=True
+    )
     conn.executescript(
         """
         CREATE TEMPORARY TABLE t AS
