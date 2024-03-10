@@ -11,29 +11,6 @@ from languages import language_codes3
 namespace_re = re.compile(r"^(?:http://kaiko.getalp.org/dbnary/|http://.*#)")
 fr_sense_re = re.compile(r"^(.*?)[.]?\s*(?:\(\d+\)|\|\d+)?:?$", re.DOTALL)
 
-translation_query_type = {
-    "de": "sense",
-    "en": "gloss",
-    "fr": "gloss",
-    "pl": "sense",
-    "sv": "gloss",
-    "es": "sense",
-    "pt": "gloss",
-    "fi": "sense",
-    "el": "gloss",
-    "ru": "sense",
-    "tr": "sense",
-    "ja": "gloss",
-    "bg": "gloss",
-    "it": "gloss",
-    "id": "gloss",
-    "nl": "gloss",
-    "lt": "gloss",
-    "la": "gloss",
-    "mg": "gloss",
-    "no": "gloss",
-}
-
 form_query = """
     SELECT ?lexentry ?other_written ?pos
         ?mood ?number ?person ?tense ?voice  # important for verbs
