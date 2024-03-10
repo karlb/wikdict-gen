@@ -60,8 +60,8 @@ ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
     dictionaries/processed/$$(firstword $$(subst -, ,%)).sqlite3 \
     dictionaries/processed/$$(word 2,$$(subst -, ,%)).sqlite3 \
     dictionaries/generic/%.sqlite3 \
+    dictionaries/generic/$$(firstword $$(subst -, ,%))-$$(word 2,$$(subst -, ,%)).sqlite3 \
     dictionaries/infer.sqlite3
-    #dictionaries/generic/$$(word 2,$$(subst ., ,$$(subst -, ,$$@)))-$$(firstword $$(subst -, ,$$(notdir $$@))).sqlite3
 	src/run.py wdweb $*
 
 ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlite3
