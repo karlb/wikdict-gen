@@ -279,21 +279,8 @@ def page_through_results(query, limit, **kwargs):
         except urllib.error.HTTPError as e:
             print(e.read())
             raise
-        # raw_json = response.read()
-        # with open('debug.json', 'w') as f:
-        #    f.write(raw_json)
-        # raw_json = raw_json.decode("unicode_escape")
-        # raw_json = open('debug.json').read()
-        # data = json.loads(raw_json)
 
-        # This should be
-        #    data = json.load(response)
-        # but virtuoso generates invalid json, so we have to work around it.
-        # See https://github.com/dbpedia/extraction-framework/issues/318
-        from codecs import raw_unicode_escape_decode
-
-        json_data = raw_unicode_escape_decode(response.read())[0]
-        data = json.loads(json_data)
+        data = json.load(response)
 
         global cols
         cols = data["head"]["vars"]
