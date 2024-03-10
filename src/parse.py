@@ -78,6 +78,8 @@ class MyHTMLParser(HTMLParser):
     def parse(self, html):
         if html is None:
             return None
+        if "<" not in html:  # performance optimization
+            return html
         self.output = ""
         self.tag_stack = []
         self.tag_data = ""
