@@ -20,7 +20,7 @@ all: venv wdweb check
 raw: ${ALL_RAW} raw-check
 processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
-wdweb: ${ALL_WDWEB_LANGS} ${ALL_WDWEB_PAIRS}
+wdweb: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
 
 test:
 	python3 -m unittest discover -s src
