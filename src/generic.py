@@ -49,6 +49,7 @@ def translation(conn, lang):
 
 
 def simple_translation(conn, lang):
+    from_lang, to_lang = lang.split("-")
     conn.create_aggregate("agg_by_score", 2, AggByScore)
     conn.execute("""DROP TABLE IF EXISTS simple_translation""")
     conn.execute(
@@ -61,13 +62,12 @@ def simple_translation(conn, lang):
         FROM (
             SELECT from_vocable, to_vocable, max(score) AS max_score
             FROM infer
-            WHERE (from_lang, to_lang) = (?, ?)
+            WHERE (from_lang, to_lang) = ('{from_lang}', '{to_lang}')  -- interpolate langs for perf reasons
             GROUP BY from_vocable, to_vocable
             ORDER BY from_vocable, coalesce(min(sense_num), '999'), max(score) DESC
         ) LEFT JOIN lang.rel_importance ON (from_vocable = lang.rel_importance.written_rep_guess)
         GROUP BY from_vocable
-        """,
-        lang.split("-"),
+        """
     )
 
 
