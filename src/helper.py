@@ -58,7 +58,9 @@ def make_for_lang_permutations(functions, langs, **kwargs):
             func(from_lang, to_lang)
 
 
-def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None, attach=()):
+def make_targets(
+    lang, out_path, targets, in_path=None, only=None, sql=None, attach=(), vacuum=True
+):
     if out_path.endswith(".sqlite3"):
         conn = sqlite3.connect("dictionaries/%s" % out_path)
     else:
@@ -90,6 +92,12 @@ def make_targets(lang, out_path, targets, in_path=None, only=None, sql=None, att
             print(name, flush=True, end=" ")
             f(conn, lang)
     conn.commit()
+    if not only and vacuum:
+        # conn.isolation_level = None
+        # print("vacuum", flush=True, end=" ")
+        # conn.execute("VACUUM main")
+        print("analyze", flush=True, end=" ")
+        conn.execute("ANALYZE main")
     print()
 
 

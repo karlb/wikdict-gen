@@ -329,11 +329,6 @@ def update_stats(conn, lang_pair):
     )
 
 
-def vacuum(conn, lang):
-    conn.isolation_level = None
-    conn.execute("VACUUM")
-
-
 def do(lang, only, sql, **kwargs):
     if "-" not in lang:
         attach = []
@@ -341,7 +336,6 @@ def do(lang, only, sql, **kwargs):
             ("vocable", make_vocable),
             ("display", make_display),
             ("entry", make_entry),
-            ("vacuum", vacuum),
         ]
         in_path = "processed"
     else:
@@ -358,7 +352,6 @@ def do(lang, only, sql, **kwargs):
             ("search_index", make_search_index),
             ("translation_block", make_translation_block),
             ("search_by_form", make_search_by_form),
-            ("vacuum", vacuum),
             ("stats", update_stats),
         ]
         in_path = "generic"

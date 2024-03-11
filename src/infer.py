@@ -62,6 +62,8 @@ def infer(**kwargs):
     conn = sqlite3.connect("dictionaries/infer.sqlite3")
     conn.create_aggregate("agg_by_score", 2, AggByScore)
     conn.executescript(open("src/infer.sql").read())
+    conn.isolation_level = None
+    conn.execute("ANALYZE main")
 
 
 def do(lang, sql, **kwargs):
@@ -77,6 +79,7 @@ def do(lang, sql, **kwargs):
         targets=targets,
         attach=["'dictionaries/processed/%s.sqlite3' AS lang" % from_lang],
         sql=sql,
+        vacuum=False,
     )
 
 
