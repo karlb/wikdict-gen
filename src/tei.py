@@ -19,7 +19,7 @@ from languages import language_names, language_codes3
 from helper import supported_langs
 
 
-INCLUDE_INFLECTED = False
+INCLUDE_INFLECTED = True
 
 
 def indent(elem, level=0):
