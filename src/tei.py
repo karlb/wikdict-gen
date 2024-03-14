@@ -39,6 +39,18 @@ def indent(elem, level=0):
             elem.tail = i
 
 
+CONTROL_CHARS = dict.fromkeys(range(32))
+del CONTROL_CHARS[10]  # allow newlines
+
+
+def remove_control_characters(x):
+    """Remove characters with ord(c) < 32
+
+    Those should not be anywhere in a dictionary
+    """
+    return x.translate(CONTROL_CHARS)
+
+
 pos_mapping = OrderedDict(
     [
         ("adjective", ("adj", "FreeDict_ontology.xml#f_pos_adj")),
@@ -357,13 +369,13 @@ def get_tei_entries_as_xml(from_lang, to_lang):
         entry = single_tei_entry(x, to_lang)
 
         indent(entry, level=2)
-        entries_xml_text_list.append(tostring(entry, "utf-8").decode("utf-8"))
+        entries_xml_text_list.append(tostring(entry, "unicode"))
         headwords += 1
         if headwords % 2000 == 0:
             print(".", end="", flush=True)
     print()
 
-    entries_xml_text = "".join(entries_xml_text_list)
+    entries_xml_text = remove_control_characters("".join(entries_xml_text_list))
     return entries_xml_text, headwords
 
 
