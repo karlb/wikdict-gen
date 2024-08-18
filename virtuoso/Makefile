@@ -1,7 +1,7 @@
 .PHONY: download gzip insert
 .DELETE_ON_ERROR:
 
-LANGS := bg de el en es fi fr id it ja la lt mg nl no pl pt ru sh sv tr ja
+LANGS := bg ca de el en es fi fr ga id it ja ku la lt mg nl no pl pt ru sh sv tr zh
 
 all: download gzip insert
 
