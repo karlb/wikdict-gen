@@ -1,4 +1,5 @@
-.PHONY: download gzip insert
+SHELL=/bin/bash -o pipefail
+.PHONY: download gzip insert virtuoso-start virtuoso-clean
 .DELETE_ON_ERROR:
 
 LANGS := bg ca de el en es fi fr ga id it ja ku la lt mg nl no pl pt ru sh sv tr zh
@@ -43,5 +44,3 @@ virtuoso-start:
 
 virtuoso-clean:
 	docker container rm wikdict-virtuoso && docker volume rm data
-
-.DELETE_ON_ERROR:
