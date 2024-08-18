@@ -33,7 +33,7 @@ def make_raw_pair(from_lang, to_lang, only):
     conn.executescript(
         """
         CREATE INDEX translation_sense_idx ON translation_sense(lexentry, trans);
-        DROP VIEW IF EXISTS translation;
+        DROP TABLE IF EXISTS translation;
 
         CREATE TABLE translation AS
         SELECT * FROM translation_sense
