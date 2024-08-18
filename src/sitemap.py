@@ -20,9 +20,11 @@ sitemap_index_tmpl = """
 """.strip()
 
 
-def make_sitemap(pair, lang):
-    cur = sqlite3.connect("dictionaries/processed/%s.sqlite3" % lang).cursor()
-    cur.execute("SELECT vocable FROM importance ORDER BY score DESC LIMIT 100")
+def make_sitemap(pair):
+    cur = sqlite3.connect("dictionaries/generic/%s.sqlite3" % pair).cursor()
+    cur.execute(
+        "SELECT written_rep FROM translation WHERE importance > 4 ORDER BY importance * score DESC LIMIT 100;"
+    )
     sorted_pair = "-".join(sorted(pair.split("-")))
     urls = "".join(
         """
@@ -31,9 +33,9 @@ def make_sitemap(pair, lang):
             <changefreq>monthly</changefreq>
         </url>
         """.format(
-            sorted_pair, vocable.split("/")[1]
+            sorted_pair, written_rep
         )
-        for (vocable,) in cur
+        for (written_rep,) in cur
     )
     filename = "sitemap/{}.xml".format(pair)
     with open(filename, "w") as f:
@@ -65,9 +67,7 @@ def main():
     for row in cur:
         pair = row["from_lang"] + "-" + row["to_lang"]
         print(pair)
-        sitemaps.extend(
-            [make_sitemap(pair, row["from_lang"]), make_sitemap(pair, row["to_lang"])]
-        )
+        sitemaps.append(make_sitemap(pair))
     make_sitemap_index(sitemaps)
 
 
