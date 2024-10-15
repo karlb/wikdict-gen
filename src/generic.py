@@ -53,7 +53,7 @@ def simple_translation(conn, lang):
     conn.create_aggregate("agg_by_score", 2, AggByScore)
     conn.execute("""DROP TABLE IF EXISTS simple_translation""")
     conn.execute(
-        """
+        f"""
         CREATE TABLE simple_translation AS
         SELECT from_vocable AS written_rep,
             agg_by_score(to_vocable, max_score) AS trans_list,
