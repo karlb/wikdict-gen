@@ -218,6 +218,7 @@ def make_importance(conn, lang):
         );
         CREATE UNIQUE INDEX imp_unique_vocable ON importance(vocable);
         CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
+        CREATE UNIQUE INDEX rel_imp_unique_rep ON rel_importance(written_rep_guess);
     """
         % dict(lang3=language_codes3[lang])
     )

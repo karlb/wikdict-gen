@@ -118,6 +118,7 @@ GROUP BY from_lang, to_lang, lexentry, sense_num, sense,
 /* TODO: The following constraint should be ok, but there's still a few violations. */
 /* CREATE UNIQUE INDEX infer_pkey ON infer(from_lang, to_lang, lexentry, */
 /*     sense, from_vocable, to_vocable); */
+CREATE INDEX infer_from_to_idx ON infer(from_lang, to_lang);
 
 
 DROP TABLE IF EXISTS infer_grouped;
