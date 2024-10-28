@@ -2,7 +2,7 @@ SHELL=/bin/bash -o pipefail
 .PHONY: download gzip insert virtuoso-start virtuoso-clean
 .DELETE_ON_ERROR:
 
-LANGS := bg ca de el en es fi fr ga id it ja ku la lt mg nl no pl pt ru sh sv tr zh
+LANGS := bg ca da de el en es fi fr ga id it ja ku la lt mg nl no pl pt ru sh sv tr zh
 
 all: download gzip insert
 

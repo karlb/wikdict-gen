@@ -9,6 +9,7 @@ supported_langs = [
     "bg",
     "ca",
     "de",
+    "da",
     "el",
     "en",
     "es",
