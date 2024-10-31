@@ -295,6 +295,7 @@ def make_search_by_form(conn, lang_pair):
 
 def update_stats(conn, lang_pair):
     from_lang, to_lang = lang_pair.split("-")
+    conn.execute("PRAGMA wikdict.journal_mode=WAL")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS wikdict.lang_pair (
