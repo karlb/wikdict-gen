@@ -16,6 +16,9 @@ ALL_WDWEB_PAIRS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_PAI
 ALL_WDWEB_LANGS = $(addprefix dictionaries/wdweb/,$(addsuffix .sqlite3,${ALL_LANGS}))
 ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS}))
 
+WEB_HOST = piku.karl.berlin
+RSYNC_FLAGS = -trvz --progress -e ssh
+
 all: venv wdweb check
 raw: ${ALL_RAW} raw-check
 processed: ${ALL_PROCESSED}
@@ -75,23 +78,21 @@ check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
 
 release-web:
-	rsync -avz --progress -e ssh dictionaries/wdweb/ www.wikdict.com:wikdict-prod/data/$(shell date +%Y-%m)
-	#scp -rC dictionaries/wdweb/ www.wikdict.com:wikdict-prod/data/$(shell date +%Y-%m)
-	ssh www.wikdict.com ln -sfT $(shell date +%Y-%m) wikdict-prod/data/dict
+	rsync $(RSYNC_FLAGS) dictionaries/wdweb/ $(WEB_HOST):/home/piku/.piku/data/wikdict/$(shell date +%Y-%m)
+	ssh $(WEB_HOST) ln -sfT $(shell date +%Y-%m) /home/piku/.piku/data/wikdict/dict
 
 release-sitemap:
-	rsync -avz --progress -e ssh sitemap www.wikdict.com:wikdict-prod/static
-
+	rsync $(RSYNC_FLAGS) sitemap $(WEB_HOST):/home/piku/.piku/data/wikdict/
 
 release-download:
-	rsync -avz --progress -e ssh dictionaries/generic/ www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
-	rsync -avz --progress -e ssh dictionaries/processed/??.sqlite3 www.wikdict.com:hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
-	ssh www.wikdict.com ln -sfT 2_$(shell date +%Y-%m) hosts/download/dictionaries/sqlite/2
+	rsync $(RSYNC_FLAGS) dictionaries/generic/ $(WEB_HOST):hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
+	rsync $(RSYNC_FLAGS) dictionaries/processed/??.sqlite3 $(WEB_HOST):hosts/download/dictionaries/sqlite/2_$(shell date +%Y-%m)
+	ssh $(WEB_HOST) ln -sfT 2_$(shell date +%Y-%m) hosts/download/dictionaries/sqlite/2
 
 release-tei:
-	rsync -avz --progress -e ssh dictionaries/tei/* www.wikdict.com:hosts/download/dictionaries/tei/recommended
+	rsync $(RSYNC_FLAGS) dictionaries/tei/* $(WEB_HOST):hosts/download/dictionaries/tei/recommended
 release-tei-noinfl:
-	rsync -avz --progress -e ssh dictionaries/tei/* www.wikdict.com:hosts/download/dictionaries/tei/no-infl
+	rsync $(RSYNC_FLAGS) dictionaries/tei/* $(WEB_HOST):hosts/download/dictionaries/tei/no-infl
 
 dictionaries/kobo/dicthtml-%.zip: 
 	pyglossary $< $@ --write-format Kobo
@@ -106,5 +107,5 @@ kobo: $(shell grep kobo/dicthtml generated.mk | cut -d: -f1)
 stardict: $(shell grep stardict generated.mk | awk -F ':' '{print $$1 ".zip"}')
 
 release-converted:
-	rsync -avz --progress -e ssh dictionaries/kobo/*.zip www.wikdict.com:hosts/download/dictionaries/kobo
-	rsync -avz --progress -e ssh dictionaries/stardict/*.zip www.wikdict.com:hosts/download/dictionaries/stardict
+	rsync $(RSYNC_FLAGS) dictionaries/kobo/*.zip $(WEB_HOST):hosts/download/dictionaries/kobo
+	rsync $(RSYNC_FLAGS) dictionaries/stardict/*.zip $(WEB_HOST):hosts/download/dictionaries/stardict
