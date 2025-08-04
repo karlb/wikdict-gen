@@ -83,6 +83,10 @@ def make_targets(
 
     for a in attach:
         conn.execute("ATTACH DATABASE " + a)
+        if "wdweb/wikdict.sqlite3" in a:
+            # Avoid errors when running multiple processes in parallel. Must be
+            # enabled before tx starts.
+            conn.execute("PRAGMA wikdict.journal_mode=WAL")
 
     if sql:
         cur = conn.cursor()
