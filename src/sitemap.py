@@ -32,9 +32,7 @@ def make_sitemap(pair):
             <loc>https://www.wikdict.com/{}/{}</loc>
             <changefreq>monthly</changefreq>
         </url>
-        """.format(
-            sorted_pair, written_rep
-        )
+        """.format(sorted_pair, written_rep)
         for (written_rep,) in cur
     )
     filename = "sitemap/{}.xml".format(pair)
@@ -50,9 +48,7 @@ def make_sitemap_index(sitemaps):
             <loc>https://www.wikdict.com/static/{}</loc>
             <lastmod>{}</lastmod>
         </sitemap>
-        """.format(
-            url, date.today()
-        )
+        """.format(url, date.today())
         for url in sitemaps
     )
     with open("sitemap/index.xml", "w") as f:

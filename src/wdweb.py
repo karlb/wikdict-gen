@@ -254,9 +254,7 @@ def make_search_index(conn, lang_pair):
         WHERE written_rep IN (
             SELECT written_rep FROM main.translation
         );
-    """.format(
-            TOKENIZER[from_lang]
-        )
+    """.format(TOKENIZER[from_lang])
     )
 
     # optimize
@@ -284,9 +282,7 @@ def make_search_by_form(conn, lang_pair):
         UNION
         SELECT written_rep, translation_block.rowid, 1 AS form_importance
         FROM translation_block;
-    """.format(
-            TOKENIZER[from_lang]
-        )
+    """.format(TOKENIZER[from_lang])
     )
 
     # optimize

@@ -211,9 +211,9 @@ WHERE {
 
 
 def make_url(query, **fmt_args):
-    assert (
-        fmt_args["limit"] <= 1048576
-    ), "Virtuoso does not support more than 1048576 results"
+    assert fmt_args["limit"] <= 1048576, (
+        "Virtuoso does not support more than 1048576 results"
+    )
     # server = 'http://kaiko.getalp.org'
     server = "http://localhost:8890"
     if "ORDER BY" not in query:
@@ -225,9 +225,7 @@ def make_url(query, **fmt_args):
         }
         OFFSET %%(offset)s
         LIMIT %%(limit)s
-    """ % (
-        query
-    )
+    """ % (query)
     for key, val in list(fmt_args.items()):
         if key.endswith("lang"):
             fmt_args[key + "3"] = language_codes3[val]
