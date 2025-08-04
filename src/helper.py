@@ -8,6 +8,7 @@ from languages import language_codes3
 supported_langs = [
     "bg",
     "ca",
+    "cs",
     "de",
     "da",
     "el",
