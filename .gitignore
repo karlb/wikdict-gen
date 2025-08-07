@@ -3,3 +3,4 @@ dictionaries
 lib
 venv
 sitemap
+__pycache__
