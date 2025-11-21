@@ -1,13 +1,13 @@
 MAKEFLAGS += --no-builtin-rules
-# Update with `python3 src/helper.py makefile > generated.mk`
+# Update with `uv run src/helper.py makefile > generated.mk`
 include generated.mk
 
 .PHONY: test extensions
 .SECONDARY:  # keep intermediate files
 .DELETE_ON_ERROR:
 
-ALL_PAIRS = $(shell python3 src/helper.py all_pairs)
-ALL_LANGS = $(shell python3 src/helper.py all_langs)
+ALL_PAIRS = $(shell uv run src/helper.py all_pairs)
+ALL_LANGS = $(shell uv run src/helper.py all_langs)
 ALL_RAW = $(addprefix dictionaries/raw/,$(addsuffix .sqlite3,${ALL_LANGS} ${ALL_PAIRS}))
 ALL_PROCESSED_LANGS = $(addprefix dictionaries/processed/,$(addsuffix .sqlite3,${ALL_LANGS}))
 ALL_PROCESSED_PAIRS = $(addprefix dictionaries/processed/,$(addsuffix .sqlite3,${ALL_PAIRS}))
@@ -26,37 +26,34 @@ generic: ${ALL_GENERIC}
 wdweb: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
 
 test:
-	python3 -m unittest discover -s src
+	uv run -m unittest discover -s src
 
 clean:
 	rm -fr dictionaries
 
-distclean: clean
-	rm -fr venv
-
 dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 	rm -f dictionaries/infer.sqlite3
-	for langpair in ${ALL_PAIRS}; do src/run.py infer-collect $$langpair; done
-	src/run.py infer
+	for langpair in ${ALL_PAIRS}; do uv run src/run.py infer-collect $$langpair; done
+	uv run src/run.py infer
 
 .SECONDEXPANSION:
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: virtuoso/ttl/$$(firstword $$(subst -, ,%)).inserted
-	src/run.py raw $*
+	uv run src/run.py raw $*
 
 raw-check:
 	for f in dictionaries/raw/*-*.sqlite3 ; do translations=$$(echo "SELECT count(*) FROM translation" | sqlite3 -noheader $$f) ; [ $$translations -eq 0 ] && echo "$$f has no translations!" || true ; done
 
 ${ALL_PROCESSED_LANGS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3
-	src/run.py process $*
+	uv run src/run.py process $*
 
 .SECONDEXPANSION:
 ${ALL_PROCESSED_PAIRS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sqlite3 \
     dictionaries/processed/$$(firstword $$(subst -, ,%)).sqlite3 \
     dictionaries/processed/$$(word 2,$$(subst -, ,%)).sqlite3
-	src/run.py process $*
+	uv run src/run.py process $*
 
-${ALL_GENERIC}: dictionaries/generic/%.sqlite3: dictionaries/processed/%.sqlite3 dictionaries/infer.sqlite3 
-	src/run.py generic $*
+${ALL_GENERIC}: dictionaries/generic/%.sqlite3: dictionaries/processed/%.sqlite3 dictionaries/infer.sqlite3
+	uv run src/run.py generic $*
 
 .SECONDEXPANSION:
 ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
@@ -65,14 +62,10 @@ ${ALL_WDWEB_PAIRS}: dictionaries/wdweb/%.sqlite3: \
     dictionaries/generic/%.sqlite3 \
     dictionaries/generic/$$(firstword $$(subst -, ,%))-$$(word 2,$$(subst -, ,%)).sqlite3 \
     dictionaries/infer.sqlite3
-	src/run.py wdweb $*
+	uv run src/run.py wdweb $*
 
 ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlite3
-	src/run.py wdweb $*
-
-venv:
-	python3 -m venv venv
-	venv/bin/pip install -r requirements.txt
+	uv run src/run.py wdweb $*
 
 check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
@@ -94,12 +87,12 @@ release-tei:
 release-tei-noinfl:
 	rsync $(RSYNC_FLAGS) dictionaries/tei/* $(WEB_HOST):hosts/download/dictionaries/tei/no-infl
 
-dictionaries/kobo/dicthtml-%.zip: 
+dictionaries/kobo/dicthtml-%.zip:
 	pyglossary $< $@ --write-format Kobo
 dictionaries/stardict/%.zip: dictionaries/stardict/%
 	cd $</.. && zip -r `basename $@` `basename $<`
 dictionaries/stardict/%:
-	mkdir -p $@ 
+	mkdir -p $@
 	pyglossary $< $@/stardict --write-format Stardict
 
 # These will be missing prerequisites in some cases (small dicts), just use `make --keep-going`.

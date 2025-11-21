@@ -72,6 +72,10 @@ def make_targets(
     else:
         os.makedirs("dictionaries/" + out_path, exist_ok=True)
         conn = sqlite3.connect("dictionaries/%s/%s.sqlite3" % (out_path, lang))
+
+    # Enable loading SQLite extensions (needed for spellfix1)
+    conn.enable_load_extension(True)
+
     try:
         conn.execute(
             "ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
