@@ -90,8 +90,9 @@ release-tei-noinfl:
 dictionaries/kobo/dicthtml-%.zip:
 	pyglossary $< $@ --write-format Kobo
 dictionaries/stardict/%.zip: dictionaries/stardict/%
-	cd $</.. && zip -r `basename $@` `basename $<`
+	cd $</.. && rm -f `basename $@` && zip -r `basename $@` `basename $<`
 dictionaries/stardict/%:
+	rm -rf $@
 	mkdir -p $@
 	pyglossary $< $@/stardict --write-format Stardict
 
