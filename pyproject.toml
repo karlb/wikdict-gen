@@ -1,7 +1,7 @@
 [project]
 name = "wikdict-gen"
 version = "0.1.0"
-description = "Add your description here"
+description = "Generate multilingual dictionaries from dbnary/Wiktionary data in SQLite, TEI, Kobo and StarDict formats"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
