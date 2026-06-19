@@ -103,7 +103,7 @@ braces_notclosed = re.compile(r"{{[^}]+")
 def repeated_sub(regex, replacement, string):
     """Repeat substituion as often as possible"""
     while True:
-        string, n = double_brackets.subn(r"\1", string)
+        string, n = regex.subn(replacement, string)
         if n == 0:
             return string
 
