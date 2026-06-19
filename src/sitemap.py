@@ -4,8 +4,6 @@ import os
 import sqlite3
 from datetime import date
 
-main_db = sqlite3.connect("dictionaries/wdweb/wikdict.sqlite3")
-main_db.row_factory = sqlite3.Row
 sitemap_tmpl = """
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -57,6 +55,8 @@ def make_sitemap_index(sitemaps):
 
 def main():
     os.makedirs("sitemap", exist_ok=True)
+    main_db = sqlite3.connect("dictionaries/wdweb/wikdict.sqlite3")
+    main_db.row_factory = sqlite3.Row
     cur = main_db.cursor()
     cur.execute("SELECT * FROM lang_pair")
     sitemaps = []
@@ -67,4 +67,5 @@ def main():
     make_sitemap_index(sitemaps)
 
 
-main()
+if __name__ == "__main__":
+    main()
