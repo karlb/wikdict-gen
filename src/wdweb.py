@@ -286,7 +286,9 @@ def make_search_by_form(conn, lang_pair):
     )
 
     # optimize
-    conn.execute("INSERT INTO main.search_trans(search_trans) VALUES('optimize');")
+    conn.execute(
+        "INSERT INTO main.search_by_form(search_by_form) VALUES('optimize');"
+    )
 
 
 def update_stats(conn, lang_pair):
