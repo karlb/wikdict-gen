@@ -1,16 +1,22 @@
 # vim: set fileencoding=utf-8 :
+import os
 import unittest
 import sqlite3
 from itertools import chain
 
+INFER_DB = "dictionaries/infer.sqlite3"
 
+
+@unittest.skipUnless(
+    os.path.exists(INFER_DB), "needs a built " + INFER_DB + " (run `make infer`)"
+)
 class TestInferResults(unittest.TestCase):
     def test_dont_expect(self):
         dont_expect = [
             ("de", "sv", "gehen", "åka"),
         ]
 
-        conn = sqlite3.connect("dictionaries/infer.sqlite3")
+        conn = sqlite3.connect(INFER_DB)
         cur = conn.cursor()
         where = " OR ".join(
             "(from_lang = ? AND to_lang = ? "
@@ -29,7 +35,7 @@ class TestInferResults(unittest.TestCase):
             # ('de', 'en', 'nur', 'only'),
         ]
 
-        conn = sqlite3.connect("dictionaries/infer.sqlite3")
+        conn = sqlite3.connect(INFER_DB)
         cur = conn.cursor()
         where = " OR ".join(
             "(from_lang = ? AND to_lang = ? "
