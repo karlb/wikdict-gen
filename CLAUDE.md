@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-WikDict-gen is a Python-based dictionary generator that extracts multilingual translation data from a Virtuoso database filled with dbnary data to create various dictionary formats. It supports 25 languages and generates dictionaries in multiple formats (SQLite, TEI XML, Kobo, StarDict).
+WikDict-gen is a Python-based dictionary generator that extracts multilingual translation data from dbnary dumps (loaded into an embedded pyoxigraph RDF store) to create various dictionary formats. It supports 25 languages and generates dictionaries in multiple formats (SQLite, TEI XML, Kobo, StarDict).
 
 ## Development Commands
 
 ### Setup
 ```bash
-make              # Full build: generates all dictionaries, runs checks
+make download     # Fetch the dbnary dumps into virtuoso/ttl/
+make              # Full build: load the store, generate all dictionaries, run checks
 uv sync           # Install dependencies into .venv (done automatically by `uv run`)
 ```
 
@@ -22,7 +23,8 @@ uv run -m unittest discover -s src
 
 ### Build Targets
 ```bash
-make raw          # Generate raw dictionaries from Virtuoso data
+uv run src/run.py load-store  # Bulk-load the dbnary dumps into the pyoxigraph store
+make raw          # Build the store if needed, then query it into raw dictionaries
 make processed    # Process raw dictionaries
 make generic      # Create generic SQLite dictionaries
 make wdweb        # Generate WikDict web format dictionaries
@@ -43,8 +45,8 @@ src/run.py search de en haus  # Search German-English for "haus"
 ## Architecture
 
 ### Data Pipeline
-1. **Virtuoso Database**: Contains dbnary RDF data loaded from TTL files
-2. **Raw Extraction** (`src/sparql/`): SPARQL queries extract data to raw SQLite databases
+1. **pyoxigraph store** (`src/sparql/store.py`): bulk-loads dbnary TTL dumps, each edition into its own named graph, into an embedded on-disk RDF store (`dictionaries/store`)
+2. **Raw Extraction** (`src/sparql/`): SPARQL queries (`queries.py`) run against the store via `backend.py`; single-edition queries are scoped to one graph, cross-edition ones query the union. Output goes to raw SQLite databases
 3. **Processing** (`src/process.py`): Processes raw data, adds language-specific processing
 4. **Inference** (`src/infer.py`): Generates translation inferences between language pairs
 5. **Output Generation**: Creates multiple dictionary formats
@@ -91,8 +93,9 @@ end
 ```
 Requires `make stardict` to have been built first. The generated file lives at
 `misc/dictionaries_wikdict.lua`.
-- **`virtuoso/`**: Virtuoso database setup and data loading scripts
-- **`pyproject.toml`**: Project metadata and dependencies (`tabulate`, `sqlite-spellfix`), managed with uv
+- **`src/sparql/store.py`**: pyoxigraph store loading (`load-store`) and read-only opening
+- **`virtuoso/ttl/`**: the downloaded dbnary TTL dumps (directory name is historical; no Virtuoso involved any more)
+- **`pyproject.toml`**: Project metadata and dependencies (`pyoxigraph`, `tabulate`, `sqlite-spellfix`), managed with uv
 
 ## Testing
 Unit tests are in `src/tests/`. The main test files cover:

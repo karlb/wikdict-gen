@@ -1,21 +1,20 @@
 # WikDict dictionary generator
 
-This generator extracts data from a Virtuoso database filled with [dbnary]
-data. Details on how to set up such a database can be found in the [virtuoso
-directory](virtuoso). The extracted data is then used to generate WikDict
-dictionaries. These dictionaries main usage is at the [WikDict
-website][wikdict.com].
+This generator extracts data from [dbnary] dumps, which it bulk-loads into an
+embedded [pyoxigraph] RDF store (no server or Docker required). The extracted data
+is then used to generate WikDict dictionaries. These dictionaries main usage is at
+the [WikDict website][wikdict.com].
 
 [dbnary]: http://kaiko.getalp.org/about-dbnary/
+[pyoxigraph]: https://pyoxigraph.readthedocs.io/
 [wikdict.com]: http://www.wikdict.com
 
 # Usage
-  
-After setting up the Virtuoso database, run
 
     git clone git@github.com:karlb/wikdict-gen.git
     cd wikdict-gen
-    make
+    make download   # fetch the dbnary dumps (into virtuoso/ttl/)
+    make            # load them into the store and build the dictionaries
 
 Use the resulting dictionaries in `dictionaries/wdweb` with [wikdict-web], try a quick lookup using the `search` command like
 
