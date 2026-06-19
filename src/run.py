@@ -1,4 +1,4 @@
-#!venv/bin/python
+#!/usr/bin/env -S uv run python
 import os
 import argparse
 import subprocess
