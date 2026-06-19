@@ -35,8 +35,6 @@ def make_entry(conn, lang):
         CREATE INDEX main.entry_written_rep_idx ON entry(written_rep);
 
         -- spellfix
-        --DROP TABLE IF EXISTS main.search_trans_aux;
-        --CREATE VIRTUAL TABLE main.search_trans_aux USING fts4aux(search_trans);
         DROP TABLE IF EXISTS main.spellfix_entry;
         CREATE VIRTUAL TABLE main.spellfix_entry USING spellfix1;
         INSERT INTO main.spellfix_entry(word, rank)

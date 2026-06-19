@@ -133,17 +133,6 @@ def make_entry(conn, lang):
         --GROUP BY 1, 2, 3,4;
         GROUP BY lexentry;
         CREATE UNIQUE INDEX entry_pkey ON entry(lexentry);
-
---        SELECT lexentry, written_rep, choose_pos(part_of_speech) AS part_of_speech,
---            CASE
---                WHEN min(gender) == max(gender) THEN gender
---                ELSE NULL
---            END AS gender,
---            pronun_list
---        FROM raw.entry
---        WHERE written_rep is NOT NULL
---          AND written_rep != ''
---        GROUP BY lexentry;
     """
     )
 

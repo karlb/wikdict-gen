@@ -52,19 +52,6 @@ class MyHTMLParser(HTMLParser):
 
         self._flush_tag()
 
-    """
-    def handle_comment(self, data):
-        print "Comment  :", data
-    def handle_charref(self, name):
-        if name.startswith('x'):
-            c = unichr(int(name[1:], 16))
-        else:
-            c = unichr(int(name))
-        print "Num ent  :", c
-    def handle_decl(self, data):
-        print "Decl     :", data
-    """
-
     def handle_data(self, data):
         self.tag_data += data
 
