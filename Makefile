@@ -19,7 +19,7 @@ ALL_GENERIC = $(addprefix dictionaries/generic/,$(addsuffix .sqlite3,${ALL_PAIRS
 WEB_HOST = piku.karl.berlin
 RSYNC_FLAGS = -trvz --progress -e ssh
 
-all: venv wdweb check
+all: wdweb check
 raw: ${ALL_RAW} raw-check
 processed: ${ALL_PROCESSED}
 generic: ${ALL_GENERIC}
