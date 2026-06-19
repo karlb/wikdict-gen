@@ -4,6 +4,7 @@ import sys
 import sqlite3
 import datetime
 import time
+from contextlib import closing
 from itertools import groupby, permutations
 from xml.etree.ElementTree import (
     Element,
@@ -196,99 +197,100 @@ def get_translations(from_lang, to_lang):
         "file:dictionaries/wdweb/%s-%s.sqlite3?mode=ro" % (from_lang, to_lang),
         uri=True,
     )
-    conn.row_factory = sqlite3.Row
+    with closing(conn):
+        conn.row_factory = sqlite3.Row
 
-    conn.execute(
-        "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang" % from_lang
-    )
-    conn.execute(
-        "ATTACH DATABASE 'dictionaries/processed/%s.sqlite3' AS from_lang" % from_lang
-    )
-    good_translations = next(
         conn.execute(
-            """
-        SELECT count(*) FROM translation WHERE translation_score >= 100
-    """
+            "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang" % from_lang
         )
-    )[0]
-    measured_exec = lambda *args, **kwargs: measured_execute(conn, *args, **kwargs)
-    conn.execute("BEGIN")
-    measured_exec("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
-
-    expected_good_translations = 45000
-    min_translation_score = round(
-        (good_translations - 1000) / expected_good_translations * 100
-    )
-    min_translation_score = max(min(min_translation_score, 100), 0)
-    print(
-        "{} good translations, min_score = {}".format(
-            good_translations, min_translation_score
+        conn.execute(
+            "ATTACH DATABASE 'dictionaries/processed/%s.sqlite3' AS from_lang" % from_lang
         )
-    )
-    translations = measured_exec(
-        """
-        SELECT lexentry,
-            t.written_rep, t.sense_list, t.trans_list,
-            e.gender, e.part_of_speech, e.pronun_list
-        FROM translation t
-             JOIN prod_lang.entry e USING (lexentry)
-        WHERE translation_score >= ?
-        ORDER BY t.written_rep, e.part_of_speech, e.gender, e.pronun_list, t.min_sense_num
-    """,
-        [min_translation_score],
-    )
-    groups = groupby(
-        translations,
-        lambda t: (
-            t["written_rep"],
-            t["part_of_speech"],
-            t["gender"],
-            t["pronun_list"],
-        ),
-    )
-    for key, translations_for_entry in groups:
-        written_rep, part_of_speech, gender, pronun_list = key
-        entry = dict(
-            written_rep=written_rep,
-            part_of_speech=part_of_speech,
-            gender=gender,
-            pronuns=list_split(pronun_list),
-        )
-        entry["senses"] = []
-        for t in translations_for_entry:
-            sense_list = list_split(t["sense_list"])
-            if not sense_list:
-                sense_list = [None]
-            for s in sense_list:
-                entry["senses"].append(
-                    dict(
-                        gloss=s,
-                        trans_list=list_split(t["trans_list"]),
-                    )
-                )
-
-        entry["inflected_forms"] = list(
-            measured_exec(
+        good_translations = next(
+            conn.execute(
                 """
-            SELECT other_written, min(rank) AS rank
-            FROM form f
-            WHERE lexentry = ?
-            GROUP BY other_written
-            ORDER BY rank;
-        """,
-                [t["lexentry"]],
+            SELECT count(*) FROM translation WHERE translation_score >= 100
+        """
+            )
+        )[0]
+        measured_exec = lambda *args, **kwargs: measured_execute(conn, *args, **kwargs)
+        conn.execute("BEGIN")
+        measured_exec("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
+
+        expected_good_translations = 45000
+        min_translation_score = round(
+            (good_translations - 1000) / expected_good_translations * 100
+        )
+        min_translation_score = max(min(min_translation_score, 100), 0)
+        print(
+            "{} good translations, min_score = {}".format(
+                good_translations, min_translation_score
             )
         )
+        translations = measured_exec(
+            """
+            SELECT lexentry,
+                t.written_rep, t.sense_list, t.trans_list,
+                e.gender, e.part_of_speech, e.pronun_list
+            FROM translation t
+                 JOIN prod_lang.entry e USING (lexentry)
+            WHERE translation_score >= ?
+            ORDER BY t.written_rep, e.part_of_speech, e.gender, e.pronun_list, t.min_sense_num
+        """,
+            [min_translation_score],
+        )
+        groups = groupby(
+            translations,
+            lambda t: (
+                t["written_rep"],
+                t["part_of_speech"],
+                t["gender"],
+                t["pronun_list"],
+            ),
+        )
+        for key, translations_for_entry in groups:
+            written_rep, part_of_speech, gender, pronun_list = key
+            entry = dict(
+                written_rep=written_rep,
+                part_of_speech=part_of_speech,
+                gender=gender,
+                pronuns=list_split(pronun_list),
+            )
+            entry["senses"] = []
+            for t in translations_for_entry:
+                sense_list = list_split(t["sense_list"])
+                if not sense_list:
+                    sense_list = [None]
+                for s in sense_list:
+                    entry["senses"].append(
+                        dict(
+                            gloss=s,
+                            trans_list=list_split(t["trans_list"]),
+                        )
+                    )
 
-        yield entry
+            entry["inflected_forms"] = list(
+                measured_exec(
+                    """
+                SELECT other_written, min(rank) AS rank
+                FROM form f
+                WHERE lexentry = ?
+                GROUP BY other_written
+                ORDER BY rank;
+            """,
+                    [t["lexentry"]],
+                )
+            )
 
-    # We create an index and don't want to keep it in the db.
-    conn.rollback()
+            yield entry
 
-    if SHOW_TIMINGS:
-        for query, timing in query_timings.items():
-            print(query)
-            print(timing | {"avg_time": timing["total_time"] / timing["num_calls"]})
+        # We create an index and don't want to keep it in the db.
+        conn.rollback()
+
+        if SHOW_TIMINGS:
+            for query, timing in query_timings.items():
+                print(query)
+                print(timing | {"avg_time": timing["total_time"] / timing["num_calls"]})
 
 
 def add_senses(entry, x, to_lang, is_suffix):
@@ -360,8 +362,6 @@ def get_tei_entries_as_xml(from_lang, to_lang):
 
     Keeping them as XML objects would use much more memory
     """
-    conn = sqlite3.connect("dictionaries/generic/%s.sqlite3" % from_lang)
-    conn.row_factory = sqlite3.Row
     entries_xml_text_list = []
     headwords = 0
     for x in get_translations(from_lang, to_lang):

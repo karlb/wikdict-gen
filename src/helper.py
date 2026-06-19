@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+from contextlib import closing
 from itertools import permutations
 import sqlite3
 
@@ -45,46 +46,47 @@ def make_targets(
         os.makedirs("dictionaries/" + out_path, exist_ok=True)
         conn = sqlite3.connect("dictionaries/%s/%s.sqlite3" % (out_path, lang))
 
-    # Enable loading SQLite extensions (needed for spellfix1)
-    conn.enable_load_extension(True)
+    with closing(conn):
+        # Enable loading SQLite extensions (needed for spellfix1)
+        conn.enable_load_extension(True)
 
-    try:
-        conn.execute(
-            "ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
-            % (in_path, lang, in_path)
-        )
-    except sqlite3.dbapi2.OperationalError:
-        print("Error attaching ", in_path, lang, "database")
-        raise
+        try:
+            conn.execute(
+                "ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
+                % (in_path, lang, in_path)
+            )
+        except sqlite3.dbapi2.OperationalError:
+            print("Error attaching ", in_path, lang, "database")
+            raise
 
-    for a in attach:
-        conn.execute("ATTACH DATABASE " + a)
-        if "wdweb/wikdict.sqlite3" in a:
-            # Avoid errors when running multiple processes in parallel. Must be
-            # enabled before tx starts.
-            conn.execute("PRAGMA wikdict.journal_mode=WAL")
+        for a in attach:
+            conn.execute("ATTACH DATABASE " + a)
+            if "wdweb/wikdict.sqlite3" in a:
+                # Avoid errors when running multiple processes in parallel. Must be
+                # enabled before tx starts.
+                conn.execute("PRAGMA wikdict.journal_mode=WAL")
 
-    if sql:
-        cur = conn.cursor()
-        cur.execute(sql)
-        from tabulate import tabulate
+        if sql:
+            cur = conn.cursor()
+            cur.execute(sql)
+            from tabulate import tabulate
 
-        print(tabulate(cur, [col[0] for col in cur.description]))
-        return
+            print(tabulate(cur, [col[0] for col in cur.description]))
+            return
 
-    print("%s/%s:" % (out_path, lang), flush=True, end=" ")
-    for name, f in targets:
-        if not only or only == name:
-            print(name, flush=True, end=" ")
-            f(conn, lang)
-    conn.commit()
-    if not only and vacuum:
-        # conn.isolation_level = None
-        # print("vacuum", flush=True, end=" ")
-        # conn.execute("VACUUM main")
-        print("analyze", flush=True, end=" ")
-        conn.execute("ANALYZE main")
-    print()
+        print("%s/%s:" % (out_path, lang), flush=True, end=" ")
+        for name, f in targets:
+            if not only or only == name:
+                print(name, flush=True, end=" ")
+                f(conn, lang)
+        conn.commit()
+        if not only and vacuum:
+            # conn.isolation_level = None
+            # print("vacuum", flush=True, end=" ")
+            # conn.execute("VACUUM main")
+            print("analyze", flush=True, end=" ")
+            conn.execute("ANALYZE main")
+        print()
 
 
 def koreader_dict_list():

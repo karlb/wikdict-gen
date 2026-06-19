@@ -8,6 +8,7 @@ from infer import AggByScore
 class TestInfer(unittest.TestCase):
     def test_entity(self):
         conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
         conn.create_aggregate("agg_by_score", 2, AggByScore)
         cur = conn.cursor()
         cur.execute(

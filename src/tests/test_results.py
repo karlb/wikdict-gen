@@ -17,6 +17,7 @@ class TestInferResults(unittest.TestCase):
         ]
 
         conn = sqlite3.connect(INFER_DB)
+        self.addCleanup(conn.close)
         cur = conn.cursor()
         where = " OR ".join(
             "(from_lang = ? AND to_lang = ? "
@@ -36,6 +37,7 @@ class TestInferResults(unittest.TestCase):
         ]
 
         conn = sqlite3.connect(INFER_DB)
+        self.addCleanup(conn.close)
         cur = conn.cursor()
         where = " OR ".join(
             "(from_lang = ? AND to_lang = ? "
