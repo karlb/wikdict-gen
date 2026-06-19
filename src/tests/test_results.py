@@ -54,6 +54,7 @@ class TestInferResults(unittest.TestCase):
             match = best_match(ex)
             if not match:
                 missing.append([ex, "missing"])
+                continue
             score = match[4]
             if score < 20:
                 missing.append([ex, "too low score: {}".format(score)])
