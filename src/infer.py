@@ -16,7 +16,7 @@ def collect(conn, lang):
             from_vocable text NOT NULL,
             to_vocable text NOT NULL,
             from_importance float NOT NULL,
-            to_importance floa NOT NULL
+            to_importance float NOT NULL
         );
     """
     )

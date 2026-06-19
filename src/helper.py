@@ -201,4 +201,5 @@ if __name__ == "__main__":
                 )
             )
     else:
-        print("Unknwn command %s" % sys.argv[1])
+        print("Unknown command %s" % sys.argv[1])
+        sys.exit(1)
