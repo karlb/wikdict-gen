@@ -3,10 +3,9 @@ import os
 import sys
 import sqlite3
 import datetime
-import codecs
 import time
 from itertools import groupby, permutations
-from xml.etree.cElementTree import (
+from xml.etree.ElementTree import (
     Element,
     SubElement,
     tostring,
@@ -430,7 +429,7 @@ def write_tei_dict(from_lang, to_lang):
     out_filename = "{}/{}-{}.tei".format(
         out_dir, language_codes3[from_lang], language_codes3[to_lang]
     )
-    with codecs.open(out_filename, "w", "utf-8") as out_file:
+    with open(out_filename, "w", encoding="utf-8") as out_file:
         out_file.write(
             """
 <?xml version="1.0" encoding="UTF-8"?>
