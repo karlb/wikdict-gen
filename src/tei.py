@@ -257,7 +257,9 @@ def get_translations(from_lang, to_lang):
                 pronuns=list_split(pronun_list),
             )
             entry["senses"] = []
+            lexentries = set()
             for t in translations_for_entry:
+                lexentries.add(t["lexentry"])
                 sense_list = list_split(t["sense_list"])
                 if not sense_list:
                     sense_list = [None]
@@ -269,16 +271,21 @@ def get_translations(from_lang, to_lang):
                         )
                     )
 
+            # A group can span several lexentries (same written_rep, pos,
+            # gender and pronunciation), so collect inflected forms from all of
+            # them instead of just the last row's lexentry.
+            placeholders = ", ".join("?" * len(lexentries))
             entry["inflected_forms"] = list(
                 measured_exec(
                     """
                 SELECT other_written, min(rank) AS rank
                 FROM form f
-                WHERE lexentry = ?
+                WHERE lexentry IN (%s)
                 GROUP BY other_written
                 ORDER BY rank;
-            """,
-                    [t["lexentry"]],
+            """
+                    % placeholders,
+                    sorted(lexentries),
                 )
             )
 
