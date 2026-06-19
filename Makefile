@@ -36,8 +36,16 @@ dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 	for langpair in ${ALL_PAIRS}; do uv run src/run.py infer-collect $$langpair; done
 	uv run src/run.py infer
 
-.SECONDEXPANSION:
-${ALL_RAW}: dictionaries/raw/%.sqlite3: virtuoso/ttl/$$(firstword $$(subst -, ,%)).inserted
+# Bulk-load all dbnary dumps into one pyoxigraph store (the union of all editions).
+# Rebuilt when any loaded dump changes. Readers (raw extraction) open it read-only,
+# so `make -j raw` runs many readers against this one store.
+dictionaries/store/.loaded: $(wildcard virtuoso/ttl/*_dbnary_ontolex.ttl.gz) \
+                            $(wildcard virtuoso/ttl/*_dbnary_exolex_ontolex.ttl.gz) \
+                            $(wildcard virtuoso/ttl/*_dbnary_morphology.ttl.gz)
+	uv run src/run.py load-store
+	touch $@
+
+${ALL_RAW}: dictionaries/raw/%.sqlite3: dictionaries/store/.loaded
 	uv run src/run.py raw $*
 
 raw-check:

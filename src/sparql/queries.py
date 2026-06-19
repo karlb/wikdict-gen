@@ -1,15 +1,11 @@
-import urllib.request, urllib.error, urllib.parse
-from urllib.parse import urlencode
-import sqlite3
-import re
+import math
 import os
-import json
-from itertools import chain
+import sqlite3
 
 from languages import language_codes3
 
-namespace_re = re.compile(r"^(?:http://kaiko.getalp.org/dbnary/|http://.*#)")
-fr_sense_re = re.compile(r"^(.*?)[.]?\s*(?:\(\d+\)|\|\d+)?:?$", re.DOTALL)
+from . import backend
+from . import store
 
 form_query = """
     SELECT ?lexentry ?other_written ?pos
@@ -37,35 +33,34 @@ form_query = """
 """
 
 
+# The union queries below lead with the selective `dct:language` pattern and omit
+# the non-selective `a ontolex:LexicalEntry` / `a dbnary:Page` type scans: in the
+# loaded dumps dct:language and dbnary:describes occur only on lexical entries and
+# pages respectively, so the types are redundant but cost a full-store scan.
 basic_entry_query = """
     SELECT ?lexentry ?vocable ?written_rep
     WHERE {
-        ?lexentry a ontolex:LexicalEntry ;
-                  dct:language lexvo:%(lang3)s ;
-                  ontolex:canonicalForm [
-                      ontolex:writtenRep ?written_rep] .
-        ?vocable a dbnary:Page ;
-                 dbnary:describes ?lexentry .
+        ?lexentry dct:language lexvo:%(lang3)s ;
+                  ontolex:canonicalForm/ontolex:writtenRep ?written_rep .
+        ?vocable dbnary:describes ?lexentry .
     }
 """
 
 basic_entry_pos_query = """
     SELECT ?lexentry ?part_of_speech
     WHERE {
-        ?lexentry a ontolex:LexicalEntry ;
-                  dct:language lexvo:%(lang3)s ;
+        ?lexentry dct:language lexvo:%(lang3)s ;
                   lexinfo:partOfSpeech ?part_of_speech
     }
 """
 
 basic_entry_gender_query = """
     SELECT ?lexentry
-           coalesce(?gender1, ?gender2) AS ?gender
+           (COALESCE(?gender1, ?gender2) AS ?gender)
     WHERE {
-        ?lexentry a ontolex:LexicalEntry ;
-                  dct:language lexvo:%(lang3)s .
+        ?lexentry dct:language lexvo:%(lang3)s .
         OPTIONAL {
-            ?lexentry ontolex:canonicalForm [lexinfo:gender ?gender1]
+            ?lexentry ontolex:canonicalForm/lexinfo:gender ?gender1
         }
         OPTIONAL {
             ?lexentry lexinfo:gender ?gender2 .
@@ -76,90 +71,79 @@ basic_entry_gender_query = """
 basic_entry_pronun_query = """
     SELECT ?lexentry ?pronun
     WHERE {
-        ?lexentry a ontolex:LexicalEntry ;
-                  dct:language lexvo:%(lang3)s ;
-                  ontolex:canonicalForm [ontolex:phoneticRep ?pronun]
+        ?lexentry dct:language lexvo:%(lang3)s ;
+                  ontolex:canonicalForm/ontolex:phoneticRep ?pronun
     }
 """
 
 
 translation_query = {
+    # Translations link to the lexical entry and carry a Gloss node. Lead with the
+    # selective translation pattern (target language) rather than scanning every
+    # LexicalEntry in the edition's graph. For "sense", the gloss's senseNumber is
+    # joined to the entry's senses to recover the definition; because ?lexentry and
+    # ?sense_num are both bound by the translation first, the sense lookup is scoped
+    # per entry and can't go cartesian.
     "sense": r"""
-        SELECT ?lexentry
-            ?sense_num
-            ?def_value AS ?sense
-            ?trans AS ?trans_entity
-            ?written_trans AS ?trans
+        SELECT ?lexentry ?sense_num (?def_value AS ?sense)
+            (?trans_node AS ?trans_entity) (?written_trans AS ?trans)
         WHERE {
-            ?lexentry a ontolex:LexicalEntry ;
-                      dct:language lexvo:%(from_lang3)s ;
-                      ontolex:sense ?sense .
-            ?sense a ontolex:LexicalSense ;
-                   dbnary:senseNumber ?sense_num ;
-                   skos:definition [rdf:value ?def_value] .
-            ?trans dbnary:isTranslationOf ?sense ;
-                   dbnary:targetLanguage lexvo:%(to_lang3)s ;
-                   dbnary:writtenForm ?written_trans.
-            OPTIONAL { ?trans dbnary:gloss [dbnary:senseNumber ?tr_sense_num] }
-
-            # FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
+            ?trans_node dbnary:targetLanguage lexvo:%(to_lang3)s ;
+                        dbnary:isTranslationOf ?lexentry ;
+                        dbnary:writtenForm ?written_trans ;
+                        dbnary:gloss [dbnary:senseNumber ?sense_num] .
+            ?lexentry dct:language lexvo:%(from_lang3)s ;
+                      ontolex:sense ?sense_ .
+            ?sense_ dbnary:senseNumber ?sense_num ;
+                    skos:definition [rdf:value ?def_value] .
         }
     """,
     "gloss": """
-        SELECT ?lexentry
-            '' AS ?sense_num
-            ?gloss AS ?sense
-            ?trans AS ?trans_entity
-            ?written_trans AS ?trans
+        SELECT ?lexentry ("" AS ?sense_num) (?gloss AS ?sense)
+            (?trans_node AS ?trans_entity) (?written_trans AS ?trans)
         WHERE {
-            ?lexentry a ontolex:LexicalEntry ;
-                      dct:language lexvo:%(from_lang3)s .
-            ?trans dbnary:isTranslationOf ?lexentry ;
-                   dbnary:targetLanguage lexvo:%(to_lang3)s ;
-                   dbnary:writtenForm ?written_trans .
+            ?trans_node dbnary:targetLanguage lexvo:%(to_lang3)s ;
+                        dbnary:isTranslationOf ?lexentry ;
+                        dbnary:writtenForm ?written_trans .
+            ?lexentry dct:language lexvo:%(from_lang3)s .
 
-            OPTIONAL {?trans dbnary:gloss [rdf:value ?gloss] }
-          #  FILTER (str(?lexentry) = 'http://kaiko.getalp.org/dbnary/fra/lire__verb__1')  # for tests
+            # An explicit gloss-node variable, not a blank node [rdf:value ...]:
+            # oxigraph plans a blank node inside OPTIONAL pathologically slowly.
+            OPTIONAL { ?trans_node dbnary:gloss ?gloss_node . ?gloss_node rdf:value ?gloss }
         }
     """,
 }
 
 
+# importance returns counts; the score (sqrt sum) is computed in python, since
+# SPARQL has no sqrt (Virtuoso used the bif:sqrt extension).
 importance_query = """
     SELECT ?vocable
-        bif:sqrt(?translation_count) + bif:sqrt(?synonym_count) AS ?score
+        (COUNT(DISTINCT ?synonym) AS ?synonym_count)
+        (COUNT(DISTINCT ?translation) AS ?translation_count)
     WHERE {
-        SELECT ?vocable
-            count(DISTINCT ?lexentry) AS ?lexentry_count
-            count(DISTINCT ?sense) AS ?sense_count
-            count(DISTINCT ?synonym) AS ?synonym_count
-            count(DISTINCT ?translation) AS ?translation_count
-        WHERE {
-            ?vocable a dbnary:Page ;
-                     dbnary:describes ?lexentry .
-            ?lexentry dct:language lexvo:%(lang3)s .
-            OPTIONAL {
-                ?synonym dbnary:synonym ?vocable .
-            }
-            OPTIONAL {
-                ?translation dbnary:isTranslationOf ?lexentry .
-            }
-            OPTIONAL {
-                ?lexentry lemon:sense ?sense .
-            }
-            OPTIONAL {
-                ?lexentry lexinfo:partOfSpeech ?pos .
-            }
-            FILTER (?pos NOT IN (lexinfo:abbreviation, lexinfo:letter))
+        ?vocable dbnary:describes ?lexentry .
+        ?lexentry dct:language lexvo:%(lang3)s .
+        OPTIONAL {
+            ?synonym dbnary:synonym ?vocable .
         }
+        OPTIONAL {
+            ?translation dbnary:isTranslationOf ?lexentry .
+        }
+        OPTIONAL {
+            ?lexentry lexinfo:partOfSpeech ?pos .
+        }
+        # Keep entries with no partOfSpeech: oxigraph's NOT IN errors on the unbound
+        # ?pos (dropping the row), whereas Virtuoso kept it.
+        FILTER (!BOUND(?pos) || ?pos NOT IN (lexinfo:abbreviation, lexinfo:letter))
     }
-    ORDER BY DESC(?score)
+    GROUP BY ?vocable
 """
 
 
 nym_query = """
 SELECT DISTINCT ?f ?nym ?t_rep
-  # Don't use ?t but only ?t_rep, since the *nyms don't link to a lexical entry. 
+  # Don't use ?t but only ?t_rep, since the *nyms don't link to a lexical entry.
   # ?t ?t_page ?f_rep   # extra columns for debugging
 WHERE {
   VALUES ?nym {dbnary:synonym dbnary:hypernym dbnary:hyponym}
@@ -180,172 +164,79 @@ WHERE {
 """
 
 
-def make_url(query, **fmt_args):
-    assert fmt_args["limit"] <= 1048576, (
-        "Virtuoso does not support more than 1048576 results"
+# Column order of each raw table (matches src/sql/sparql/*.sql). Everything is text
+# except importance.score.
+COLUMNS = {
+    "form": ["lexentry", "other_written", "pos", "mood", "number", "person",
+             "tense", "voice", "case", "inflection", "definiteness", "gender"],
+    "entry": ["lexentry", "vocable", "written_rep"],
+    "pos": ["lexentry", "part_of_speech"],
+    "gender": ["lexentry", "gender"],
+    "pronun": ["lexentry", "pronun"],
+    "importance": ["vocable", "score"],
+    "nym": ["f", "nym", "t_rep"],
+    "translation_sense": ["lexentry", "sense_num", "sense", "trans_entity", "trans"],
+    "translation_gloss": ["lexentry", "sense_num", "sense", "trans_entity", "trans"],
+}
+COLUMN_SQL_TYPE = {"score": "real"}
+
+# Queries that only need one edition's data are scoped to that edition's named
+# graph (fast); the rest query the union of all editions' graphs.
+SINGLE_EDITION = {"form", "translation_sense", "translation_gloss"}
+
+
+def create_table(conn, table_name):
+    col_def = ", ".join(
+        '"%s" %s' % (col, COLUMN_SQL_TYPE.get(col, "text")) for col in COLUMNS[table_name]
     )
-    # server = 'http://kaiko.getalp.org'
-    server = "http://localhost:8890"
-    if "ORDER BY" not in query:
-        query += "\nORDER BY 1"
-    query = """
-        SELECT *
-        WHERE {
-            %s
-        }
-        OFFSET %%(offset)s
-        LIMIT %%(limit)s
-    """ % (query)
-    for key, val in list(fmt_args.items()):
-        if key.endswith("lang"):
-            fmt_args[key + "3"] = language_codes3[val]
-    url = (
-        server
-        + "/sparql?"
-        + urlencode(
-            {
-                "default-graph-uri": "",
-                "query": query % fmt_args,
-                "format": "application/json",
-                "timeout": 0,
-            }
-        )
+    conn.executescript(
+        "DROP TABLE IF EXISTS {0}; CREATE TABLE {0} ({1});".format(table_name, col_def)
     )
-    # print query % fmt_args
-    return url
 
 
-def page_through_results(query, limit, **kwargs):
-    offset = 0
-    while True:
-        url = make_url(query, limit=limit, offset=offset, **kwargs)
-        try:
-            response = urllib.request.urlopen(url)
-        except urllib.error.HTTPError as e:
-            print(e.read())
-            raise
-
-        data = json.load(response)
-
-        global cols
-        cols = data["head"]["vars"]
-        result = data["results"]["bindings"]
-        yield result
-        if len(result) < limit:
-            break
-        else:
-            offset += limit
-            print(".")
+def _importance_rows(reader, query, lang):
+    """Yield (vocable, score) where score = sqrt(translations) + sqrt(synonyms)."""
+    for sol in backend.query(reader, query, union=True):
+        vocable = backend.cell(backend.get(sol, "vocable"), "vocable", lang)
+        synonyms = int(sol["synonym_count"].value)
+        translations = int(sol["translation_count"].value)
+        yield (vocable, math.sqrt(translations) + math.sqrt(synonyms))
 
 
-def create_table(conn, table_name, first_result=None):
-    sql_filename = "src/sql/sparql/{}.sql".format(table_name)
-    if first_result:
-        sql_types = {
-            "http://www.w3.org/2001/XMLSchema#integer": "int",
-            "http://www.w3.org/2001/XMLSchema#decimal": "real",
-            "http://www.w3.org/2001/XMLSchema#double": "real",
-            "http://www.w3.org/2001/XMLSchema#string": "text",
-            None: "text",
-        }
-        col_types = [
-            sql_types[first_result.get(col_name, {}).get("datatype")]
-            for col_name in cols
-        ]
-        sql = """
-            DROP TABLE IF EXISTS {table_name};
-            CREATE TABLE {table_name} ({col_def});
-        """.format(
-            table_name=table_name,
-            col_def=", ".join(
-                '"%s" %s' % col_desc for col_desc in zip(cols, col_types)
-            ),
-        )
-        # Save definition to file. This is required for cases where the query
-        # returns no results, so that we can't determine the columns and types
-        # from the result.
-        with open(sql_filename, "w") as f:
-            f.write(sql)
-    else:
-        with open(sql_filename) as f:
-            sql = f.read()
-
-    conn.executescript(sql)
-
-
-def get_query(table_name, query, **kwargs):
+def get_query(reader, table_name, query, **kwargs):
     if "lang" in kwargs:
         lang = kwargs["lang"]
         db_name = lang
     else:
         lang = kwargs["from_lang"]
-        kwargs["lang"] = lang
         db_name = "{}-{}".format(kwargs["from_lang"], kwargs["to_lang"])
 
-    print("Fetch {} (SPARQL)".format(table_name))
-    limit = int(5e5)
-    batches = page_through_results(query, limit=limit, **kwargs)
-    results = chain.from_iterable(batches)
+    fmt_args = dict(kwargs)
+    for key, val in list(fmt_args.items()):
+        if key.endswith("lang"):
+            fmt_args[key + "3"] = language_codes3[val]
+    sparql_query = query % fmt_args
+
+    print("Fetch {} (pyoxigraph)".format(table_name))
+    columns = COLUMNS[table_name]
+    if table_name == "importance":
+        rows = _importance_rows(reader, sparql_query, lang)
+    elif table_name in SINGLE_EDITION:
+        rows = backend.run_query(
+            reader, sparql_query, columns, lang, graph=store.edition_graph(lang)
+        )
+    else:
+        rows = backend.run_query(reader, sparql_query, columns, lang, union=True)
+
     path = "dictionaries/raw"
     os.makedirs(path, exist_ok=True)
     conn = sqlite3.connect("%s/%s.sqlite3" % (path, db_name))
-
-    try:
-        first_result = next(results)
-    except StopIteration:
-        print("No results!")
-        create_table(conn, table_name)  # create empty table
-        return
-
-    # put first result back into iterable
-    results = chain([first_result], results)
-
-    create_table(conn, table_name, first_result)
-
-    py_types = {
-        "http://www.w3.org/2001/XMLSchema#integer": int,
-        "http://www.w3.org/2001/XMLSchema#decimal": float,
-        "http://www.w3.org/2001/XMLSchema#double": float,
-        "http://www.w3.org/2001/XMLSchema#string": str,
-    }
-
-    def postprocess_literal(col_name, value, **kwargs):
-        if lang == "fr" and col_name == "sense":
-            # remove sense number references from the end of the gloss
-            match = fr_sense_re.match(value)
-            assert match, f"malformed gloss: {value!r}"
-            return match.group(1)
-
-        return value
-
-    postprocess = {
-        "literal": postprocess_literal,
-        "uri": lambda col_name, value, **kwargs: namespace_re.sub("", value),
-        "typed-literal": lambda col_name, value, datatype, **kwargs: py_types[datatype](
-            value
-        ),
-    }
-
-    def postprocess_row(row):
-        for col_name in cols:
-            if col_name not in row:
-                yield None
-                continue
-            cell = row[col_name]
-            processed = postprocess[cell["type"]](col_name, **cell)
-            if isinstance(processed, str):
-                # The input contains some badly encoded characters.
-                # Replace these with ?-Symbols to avoid later errors
-                processed = processed.encode("utf-8", "replace").decode()
-            yield processed
-
-    print("Inserting into db")
+    create_table(conn, table_name)
     cur = conn.cursor()
     cur.executemany(
-        "INSERT INTO %s VALUES (%s)" % (table_name, ", ".join(["?"] * len(cols))),
-        (list(postprocess_row(r)) for r in results),
+        "INSERT INTO %s VALUES (%s)" % (table_name, ", ".join(["?"] * len(columns))),
+        rows,
     )
     print("Inserted", cur.rowcount, "rows")
-
     conn.commit()
     conn.close()

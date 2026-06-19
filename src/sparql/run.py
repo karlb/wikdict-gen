@@ -3,6 +3,7 @@
 import sqlite3
 
 from . import queries as sparql
+from . import store
 
 
 def make_raw(lang, only):
@@ -15,9 +16,10 @@ def make_raw(lang, only):
         "importance": sparql.importance_query,
         "nym": sparql.nym_query,
     }
+    reader = store.open_reader()
     for name, q in queries.items():
         if not only or only == name:
-            sparql.get_query(name, q, lang=lang)
+            sparql.get_query(reader, name, q, lang=lang)
 
 
 def make_raw_pair(from_lang, to_lang, only):
@@ -25,9 +27,10 @@ def make_raw_pair(from_lang, to_lang, only):
         "translation_sense": sparql.translation_query["sense"],
         "translation_gloss": sparql.translation_query["gloss"],
     }
+    reader = store.open_reader()
     for name, q in queries.items():
         if not only or only == name:
-            sparql.get_query(name, q, from_lang=from_lang, to_lang=to_lang)
+            sparql.get_query(reader, name, q, from_lang=from_lang, to_lang=to_lang)
 
     conn = sqlite3.connect(f"dictionaries/raw/{from_lang}-{to_lang}.sqlite3")
     conn.executescript(
@@ -55,8 +58,17 @@ def do(lang, only, **kwargs):
         make_raw_pair(*lang.split("-"), only=only)
 
 
+def do_load_store(**kwargs):
+    store.build_store()
+
+
 def add_subparsers(subparsers):
     raw = subparsers.add_parser("raw", help="execute sparql queries and create raw db")
     raw.add_argument("lang")
     raw.set_defaults(func=do)
     raw.add_argument("--only")
+
+    load_store = subparsers.add_parser(
+        "load-store", help="bulk-load the dbnary TTL dumps into the pyoxigraph store"
+    )
+    load_store.set_defaults(func=do_load_store)
