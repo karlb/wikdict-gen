@@ -1,6 +1,8 @@
 from collections import defaultdict
 import json
 
+import sqlite_spellfix
+
 from helper import make_targets
 
 
@@ -22,7 +24,7 @@ def make_vocable(conn, lang):
 
 
 def make_entry(conn, lang):
-    conn.load_extension("lib/spellfix1")
+    conn.load_extension(sqlite_spellfix.extension_path())
     conn.executescript(
         """
         DROP TABLE IF EXISTS main.entry;
