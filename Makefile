@@ -2,7 +2,7 @@ MAKEFLAGS += --no-builtin-rules
 # Update with `uv run src/helper.py makefile > generated.mk`
 include generated.mk
 
-.PHONY: test extensions
+.PHONY: test extensions download gzip
 .SECONDARY:  # keep intermediate files
 .DELETE_ON_ERROR:
 
@@ -44,6 +44,15 @@ dictionaries/store/.loaded: $(wildcard virtuoso/ttl/*_dbnary_ontolex.ttl.gz) \
                             $(wildcard virtuoso/ttl/*_dbnary_morphology.ttl.gz)
 	uv run src/run.py load-store
 	touch $@
+
+# Download the dbnary dumps and decompress to the .gz the loader reads.
+download:
+	wget -r -nd --timestamping --no-parent --accept '*.ttl.bz2' \
+		--directory-prefix=virtuoso/ttl http://kaiko.getalp.org/static/ontolex/latest/
+
+gzip: $(patsubst %.bz2,%.gz,$(wildcard virtuoso/ttl/*.bz2))
+virtuoso/ttl/%.gz: virtuoso/ttl/%.bz2
+	bzcat $< | gzip > $@
 
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: dictionaries/store/.loaded
 	uv run src/run.py raw $*
