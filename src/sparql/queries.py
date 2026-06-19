@@ -37,36 +37,6 @@ form_query = """
 """
 
 
-# not used until the virtuoso bug 575 is fixed
-entry_query = """
-    SELECT ?lexentry ?written_rep ?part_of_speech
-           coalesce(?gender1, ?gender2) AS ?gender
-           ?pronun_list
-    WHERE {
-        ?lexform lemon:writtenRep ?written_rep .
-        ?lexentry lemon:canonicalForm ?lexform ;
-                  dct:language lexvo:%(lang3)s .
-
-        ?lexentry lexinfo:partOfSpeech ?part_of_speech
-        # I used optional earlier, am now missing some entries, but
-        # virtuoso does not return proper ?part_of_speech results in
-        # version 07.20.3217, otherwise. At least on my system.
-        # See https://github.com/openlink/virtuoso-opensource/issues/575
-        #OPTIONAL { ?lexentry lexinfo:partOfSpeech ?part_of_speech }
-
-        OPTIONAL { ?lexform lexinfo:gender ?gender1 }
-        OPTIONAL { ?lexentry lexinfo:gender ?gender2 }
-        OPTIONAL {
-            SELECT ?lexform, group_concat(?pronun, ' | ') AS ?pronun_list
-            WHERE {
-                ?lexform lexinfo:pronunciation ?pronun .
-            }
-        }
-
-        #FILTER (str(?written_rep) = 'Haus')  # for tests
-    }
-"""
-
 basic_entry_query = """
     SELECT ?lexentry ?vocable ?written_rep
     WHERE {
