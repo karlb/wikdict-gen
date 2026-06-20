@@ -78,12 +78,19 @@ basic_entry_pronun_query = """
 
 
 translation_query = {
-    # Translations link to the lexical entry and carry a Gloss node. Lead with the
-    # selective translation pattern (target language) rather than scanning every
-    # LexicalEntry in the edition's graph. For "sense", the gloss's senseNumber is
-    # joined to the entry's senses to recover the definition; because ?lexentry and
-    # ?sense_num are both bound by the translation first, the sense lookup is scoped
-    # per entry and can't go cartesian.
+    # dbnary connects a translation to a sense definition two different ways, and
+    # which one an edition uses drifts over time, per edition (see
+    # notes/suggestions/bugs.md #6). We extract BOTH and merge them in run.py:
+    # neither alone is correct (the gloss-join is 0 for still-sense-linked editions
+    # like pl; the direct link is 0 for migrated editions like fr/de).
+    #
+    # Both lead with the selective translation pattern (target language) rather than
+    # scanning every LexicalEntry in the edition's graph.
+    #
+    # "sense": gloss-senseNumber join, for editions on the entry+gloss model. The
+    # gloss's senseNumber is joined to the entry's senses to recover the definition;
+    # because ?lexentry and ?sense_num are both bound by the translation first, the
+    # sense lookup is scoped per entry and can't go cartesian.
     "sense": r"""
         SELECT ?lexentry ?sense_num (?def_value AS ?sense)
             (?trans_node AS ?trans_entity) (?written_trans AS ?trans)
@@ -96,6 +103,23 @@ translation_query = {
                       ontolex:sense ?sense_ .
             ?sense_ dbnary:senseNumber ?sense_num ;
                     skos:definition [rdf:value ?def_value] .
+        }
+    """,
+    # "sense_direct": the translation links straight to the LexicalSense, for
+    # editions still on the old model (pl; partly es). The sense's senseNumber and
+    # definition constraints right after isTranslationOf prune the entry-linked
+    # binding, so migrated editions return 0 quickly instead of going cartesian.
+    "sense_direct": r"""
+        SELECT ?lexentry ?sense_num (?def_value AS ?sense)
+            (?trans_node AS ?trans_entity) (?written_trans AS ?trans)
+        WHERE {
+            ?trans_node dbnary:targetLanguage lexvo:%(to_lang3)s ;
+                        dbnary:isTranslationOf ?sense_ ;
+                        dbnary:writtenForm ?written_trans .
+            ?sense_ dbnary:senseNumber ?sense_num ;
+                    skos:definition [rdf:value ?def_value] .
+            ?lexentry dct:language lexvo:%(from_lang3)s ;
+                      ontolex:sense ?sense_ .
         }
     """,
     "gloss": """
@@ -167,8 +191,20 @@ WHERE {
 # Column order of each raw table (matches src/sql/sparql/*.sql). Everything is text
 # except importance.score.
 COLUMNS = {
-    "form": ["lexentry", "other_written", "pos", "mood", "number", "person",
-             "tense", "voice", "case", "inflection", "definiteness", "gender"],
+    "form": [
+        "lexentry",
+        "other_written",
+        "pos",
+        "mood",
+        "number",
+        "person",
+        "tense",
+        "voice",
+        "case",
+        "inflection",
+        "definiteness",
+        "gender",
+    ],
     "entry": ["lexentry", "vocable", "written_rep"],
     "pos": ["lexentry", "part_of_speech"],
     "gender": ["lexentry", "gender"],
@@ -176,18 +212,31 @@ COLUMNS = {
     "importance": ["vocable", "score"],
     "nym": ["f", "nym", "t_rep"],
     "translation_sense": ["lexentry", "sense_num", "sense", "trans_entity", "trans"],
+    "translation_sense_direct": [
+        "lexentry",
+        "sense_num",
+        "sense",
+        "trans_entity",
+        "trans",
+    ],
     "translation_gloss": ["lexentry", "sense_num", "sense", "trans_entity", "trans"],
 }
 COLUMN_SQL_TYPE = {"score": "real"}
 
 # Queries that only need one edition's data are scoped to that edition's named
 # graph (fast); the rest query the union of all editions' graphs.
-SINGLE_EDITION = {"form", "translation_sense", "translation_gloss"}
+SINGLE_EDITION = {
+    "form",
+    "translation_sense",
+    "translation_sense_direct",
+    "translation_gloss",
+}
 
 
 def create_table(conn, table_name):
     col_def = ", ".join(
-        '"%s" %s' % (col, COLUMN_SQL_TYPE.get(col, "text")) for col in COLUMNS[table_name]
+        '"%s" %s' % (col, COLUMN_SQL_TYPE.get(col, "text"))
+        for col in COLUMNS[table_name]
     )
     conn.executescript(
         "DROP TABLE IF EXISTS {0}; CREATE TABLE {0} ({1});".format(table_name, col_def)

@@ -24,7 +24,12 @@ def make_raw(lang, only):
 
 def make_raw_pair(from_lang, to_lang, only):
     queries = {
+        # Two sense-linking mechanisms; dbnary uses one or the other per edition
+        # (see notes/suggestions/bugs.md #6). Extract both and merge below: the
+        # gloss-senseNumber join is empty for still-sense-linked editions (pl), the
+        # direct sense link is empty for migrated ones (fr/de).
         "translation_sense": sparql.translation_query["sense"],
+        "translation_sense_direct": sparql.translation_query["sense_direct"],
         "translation_gloss": sparql.translation_query["gloss"],
     }
     reader = store.open_reader()
@@ -35,6 +40,17 @@ def make_raw_pair(from_lang, to_lang, only):
     conn = sqlite3.connect(f"dictionaries/raw/{from_lang}-{to_lang}.sqlite3")
     conn.executescript(
         """
+        -- Fold the direct-link sense rows into translation_sense (dedup): the
+        -- gloss-join is empty for still-sense-linked editions (e.g. pl), the direct
+        -- link is empty for migrated ones (e.g. fr/de); together they cover both.
+        INSERT INTO translation_sense
+        SELECT d.* FROM translation_sense_direct d
+        WHERE NOT EXISTS (
+            SELECT 1 FROM translation_sense s
+            WHERE (s.lexentry, s.trans, s.sense_num) = (d.lexentry, d.trans, d.sense_num)
+        );
+        DROP TABLE translation_sense_direct;
+
         CREATE INDEX translation_sense_idx ON translation_sense(lexentry, trans);
         DROP TABLE IF EXISTS translation;
 
