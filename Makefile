@@ -86,6 +86,7 @@ ${ALL_WDWEB_LANGS}: dictionaries/wdweb/%.sqlite3: dictionaries/processed/%.sqlit
 
 check:
 	find . -name '*.sqlite3' -empty | grep . && echo 'WARNING: Empty databases found!' || echo 'Results look ok' ; true
+	uv run src/helper.py check-translations
 
 release-web:
 	rsync $(RSYNC_FLAGS) dictionaries/wdweb/ $(WEB_HOST):/home/piku/.piku/data/wikdict/$(shell date +%Y-%m)
