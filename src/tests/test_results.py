@@ -4,6 +4,8 @@ import unittest
 import sqlite3
 from itertools import chain
 
+import scoring
+
 INFER_DB = "dictionaries/infer.sqlite3"
 
 
@@ -64,7 +66,7 @@ class TestInferResults(unittest.TestCase):
                 missing.append([ex, "missing"])
                 continue
             score = match[4]
-            if score < 20:
+            if score < scoring.IS_GOOD_THRESHOLD:
                 missing.append([ex, "too low score: {}".format(score)])
 
         self.assertEqual(missing, [])

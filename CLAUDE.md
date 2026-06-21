@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-WikDict-gen is a Python-based dictionary generator that extracts multilingual translation data from dbnary dumps (loaded into an embedded pyoxigraph RDF store) to create various dictionary formats. It supports 25 languages and generates dictionaries in multiple formats (SQLite, TEI XML, Kobo, StarDict).
+WikDict-gen is a Python-based dictionary generator that extracts multilingual translation data from dbnary dumps (loaded into an embedded pyoxigraph RDF store) to create various dictionary formats. It supports 26 languages and generates dictionaries in multiple formats (SQLite, TEI XML, Kobo, StarDict).
 
 ## Development Commands
 
@@ -114,7 +114,7 @@ keeps the probes green.
 - **WdWeb**: Optimized format for the WikDict website
 
 ### Supported Languages
-25 languages: bg, ca, cs, da, de, el, en, es, fi, fr, ga, id, it, ja, ku, la, lt, mg, nl, no, pl, pt, ru, sv, tr, zh
+26 languages: bg, ca, cs, da, de, el, en, es, fi, fr, ga, id, it, ja, ku, la, lt, mg, nl, no, pl, pt, ru, sv, tr, zh
 
 ## Important Files
 

@@ -20,6 +20,7 @@ import unittest
 import generic
 import infer
 import process
+import scoring
 import wdweb
 from sparql import run as sparql_run
 from sparql import store
@@ -110,7 +111,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertIsNotNone(row)
         trans_list, score, is_good = row
         self.assertIn("house", trans_list)
-        self.assertGreaterEqual(score, 20)
+        self.assertGreaterEqual(score, scoring.IS_GOOD_THRESHOLD)
         self.assertTrue(is_good)
 
     def test_inferred_translation(self):
@@ -138,7 +139,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertIsNotNone(row)
         trans_list, score = row
         self.assertIn("gå", trans_list)  # expect
-        self.assertGreaterEqual(score, 20)
+        self.assertGreaterEqual(score, scoring.IS_GOOD_THRESHOLD)
         self.assertNotIn("åka", trans_list)  # dont_expect
 
     def test_wdweb_outputs(self):
