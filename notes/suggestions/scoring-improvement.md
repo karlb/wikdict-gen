@@ -150,10 +150,33 @@ changes; add the newly labelled cases as regression guards.
   the admitted band's own precision, not the sweep's headline P; scoring *changes*
   at a fixed threshold are clean because the enrichment cancels.
 
-Not done (heaviest, deferred with reason): the **sense-coherent backlink** and
-**concept agreement (P5137)** signals both need a rebuild / external data load
-(rebuild `indirect`; load Wikidata), out of scope for a no-rebuild harness pass.
-They are the principled next candidates now that the precision measure exists.
+  *Concept agreement (P5137) — measured, not yet integrated.* Before paying the
+  external-load + join cost, a no-rebuild probe (`notes/p5137_probe.py`) parsed the
+  Wikidata lexeme dump into a `(lang, lemma) → {Q-item}` map for the five gold
+  languages and cross-tabulated concept agreement against the gold. Two findings
+  decide the case. (i) Where it can speak it is a strong *positive* signal:
+  `P(correct | shares a Q-item) = 0.975` (n=80), and of the 32 confirmed-bad FPs it
+  endorses **zero** — concept agreement never backs a known-false translation (the
+  åka class is absent or non-agreeing, never agreeing). (ii) But it is one-sided and
+  sparse: *disagreement* is not a veto (`P(correct | both present, no shared
+  concept) = 0.819`, since P5137 sense coverage is partial), and both words carry a
+  P5137 sense for only ~26% of correct / ~34% of incorrect gap-fills — the rest are
+  multi-word or long-tail, absent from Wikidata lexemes. So P5137 is worth
+  integrating as a **corroboration boost** (lift the score of inferred pairs that
+  share a concept; never demote on absence), realistically helping the ~27% of
+  single-word-covered gap-fills and the weak/empty pairs — not as a fix for the
+  flagship leak, which it can only withhold from, not veto.
+
+Status of the two principled signals. **Sense-coherent backlink** turned out to be
+*already implemented*: `infer.sql` already joins `backlink.back_sense = t2.sense`,
+so the indirect bonus already requires the back-linking pivot sense to be the one
+reaching the target. It cannot fix `gehen → åka` — dbnary represents English "go"
+(walk / go / travel) as a single coarse sense that translates to gå, gehen *and*
+åka alike, so the back-link sense is byte-identical on the correct and the leaking
+path: a data-granularity ceiling, not a missing signal. **Concept agreement
+(P5137)** is measured (above); the remaining work is the integration itself
+(external lexeme load + a fuzzy lemma/lang join feeding a boost term in
+`infer.sql`), now de-risked by the probe.
 
 ## Already in place (do not redo)
 - `src/scoring.py` — centralized constants.
