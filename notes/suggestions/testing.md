@@ -11,17 +11,31 @@
 - The `ResourceWarning: unclosed database` during the test run is gone —
   connections are closed (see code-quality.md, resolved).
 - A miniature end-to-end test now exists (`test_e2e.py`, architecture.md #5).
+- The `de→sv "gehen" → "åka"` regression no longer reproduces on current data:
+  `AggByScore`'s diversity gate crowds `åka` out behind a real competitor. It is
+  guarded by `test_results.test_dont_expect` (real data) and the e2e
+  `dont_expect` assertion. A diminishing-returns combine that targeted it was
+  tried and reverted (architecture.md #4) — it dropped mostly-correct
+  translations.
+
+## Resolved (cont.)
+
+- **A known-false-positive list now exists** (scoring-improvement.md). `mine-gold`
+  samples inferred-only gap-fills (stratified to enrich for the high-fan-out "hub"
+  pattern), an independent multi-lens LLM judge labels them correct/incorrect, and
+  the hand-spot-checked result is frozen in `src/tests/data/precision_gold.tsv`
+  (320 rows; 28 confirmed false positives). `precision_gold.confirmed_bad()`
+  exposes the high-confidence ones. `evaluate` uses the gold for a real precision
+  term, and `test_precision_gold.py` covers the metric logic without the big DB.
 
 ## Open
 
-- **The `de→sv "gehen" → "åka"` data-quality regression.** When a built
-  `dictionaries/infer.sqlite3` is present, `test_results.test_dont_expect`
-  still trips on this (score 187.7). The real fix is the measurable scoring
-  model in architecture.md #4 — today there's no way to tell whether a scoring
-  tweak that fixes it makes everything else better or worse.
-- **Grow the `expect`/`dont_expect` lists.** They check only one pair each; a
-  handful of known-good/known-bad translations per major language pair would
-  catch scoring regressions cheaply.
+- **Promote confirmed FPs to `dont_expect` guards once a precision fix removes
+  them.** The 13 high-confidence FPs (e.g. `de:Wahrheit→fact`, `de:Hund→bitch`,
+  `fr-it:Gand→Guanto`) currently still ship, so they can't yet be passing absent-
+  assertions; they wait on a net-positive scoring change (the fan-out penalty was
+  measured net-negative — architecture.md #4 — so it isn't it). Growing the gold
+  beyond the four pairs would broaden the precision signal.
 - **`parse.py` cleaning functions are untested for edge cases** the code
   special-cases: `clean_wiki_syntax` brace handling, `is_dummy_sense`, and
   `make_inflection_cleaner("de")` (pronoun/article stripping).

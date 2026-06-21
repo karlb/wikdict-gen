@@ -54,30 +54,52 @@ of `if lang == "de"`. Two benefits: "what does it take to add/improve a
 language?" has one answer, and the generic pipeline code stops accumulating
 special cases. This is a mechanical refactor — no behavior change.
 
-## 4. Make the translation-scoring model explicit and measurable
+## 4. Make the translation-scoring model explicit and measurable — DONE
 
-The quality of WikDict's output hinges on a scoring model whose constants
-are spread across four files with no way to evaluate changes:
-direct = 100 and reverse = 2 and indirect = 10·backlink² in `infer.sql`,
-the 20-point step in `AggByScore`, `score >= 20 AS is_good` in
-`generic.py`, `translation_score >= 100` and the adaptive threshold
-targeting 45,000 entries in `tei.py`.
+The scoring constants used to be spread across four files with no way to
+evaluate changes. Both halves of the suggestion are now in place:
 
-Two-part suggestion:
+1. **Centralized.** `src/scoring.py` is the single source of truth for every
+   constant (direct/reverse/indirect weights, the `AggByScore` step, the
+   `is_good` and TEI thresholds), substituted into `infer.sql` via
+   `infer.py:render_sql()` and imported by `generic.py`/`tei.py`.
+2. **Measurable.** `src/evaluate.py` (`uv run src/run.py evaluate [--sweep |
+   --experiment]`) holds out each pair's direct translations, lets inference
+   reproduce them through the other languages as pivots, and reports
+   precision/recall/F0.5 at the `is_good` threshold plus the `gehen` probes. It
+   reads a built `infer.sqlite3` and needs no rebuild (the held-out indirect
+   paths are already in `with_lexentry`).
 
-1. **Document and centralize** the model: one module (or one SQL file
-   header) that defines the constants and explains the intent of each.
-2. **Build a small evaluation harness** so changes become measurable
-   instead of eyeballed: for a few language pairs, hold out the direct
-   translations, run inference without them, and measure how well the
-   inferred translations reproduce the held-out direct ones
-   (precision/recall at the `is_good` threshold). The existing
-   `expect`/`dont_expect` lists in `test_results.py` are the seed of this;
-   the held-out approach scales it without manual labeling.
+What the harness then taught us about `gehen → åka`:
 
-The currently failing `gehen → åka` regression shows the need: today there
-is no way to tell whether a scoring tweak that fixes it makes everything
-else better or worse.
+- A **diminishing-returns combine** (`max + decay·(sum − max)`) was tried to stop
+  polysemous "hub" pivots from summing a wrong translation past the threshold. It
+  fixed `åka` and raised precision — but the harness's recall and a differential
+  sample showed it **drops mostly-correct translations** (≈71% of inferred-only
+  de→en gap-fills, e.g. `schnell→quickly`, `fliehen→run away`). The premise was
+  backwards: many corroborating pivots usually means *right*, not suspicious. So
+  it was **reverted**; the combine is a plain `sum` again.
+- On current data the regression doesn't even reproduce — `AggByScore`'s
+  diversity gate already crowds `åka` out behind a real competitor (`sträcka
+  sig`). The `dont_expect` probe guards it against future data shifts.
+
+**The precision measure now exists (scoring-improvement.md).** Held-out
+reconstruction scores *recall* but counts every gap-fill as a false positive, so
+it was blind to precision. `src/precision_gold.py` adds the missing half: a
+checked-in gold of inferred-only gap-fills (`src/tests/data/precision_gold.tsv`),
+labelled correct/incorrect by an independent multi-lens LLM judge and
+hand-spot-checked — independent of the dbnary edges we infer from, so not
+circular. `evaluate` now combines held-out recall with gold precision into one
+F0.5 objective, plus a correct-*retention* term.
+
+What it then settled: the **fan-out penalty** (`evaluate --experiment`) is
+**measured net-negative and does not ship.** It lifts gold precision 0.91→0.97
+but drops ~67% of *correct* gap-fills (retention 1.00→0.33) and recall 0.14→0.11,
+so combined F0.5 falls 0.44→0.39 — the same mistake as the reverted decay, now
+quantified on precision rather than asserted. The plain `sum` combine wins. The
+confirmed-bad rows are the known-false-positive list testing.md asked for. Still
+open, the more principled gold: Wikidata P5137 concept pivots (wikidata.md),
+which would also be a scoring *feature*, not just a judge.
 
 ## 5. A miniature end-to-end fixture — DONE
 

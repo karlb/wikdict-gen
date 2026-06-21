@@ -56,6 +56,9 @@ if __name__ == "__main__":
     import evaluate
 
     evaluate.add_subparsers(subparsers)
+    import precision_gold
+
+    precision_gold.add_subparsers(subparsers)
 
     search = subparsers.add_parser("search")
     search.add_argument("from_lang")

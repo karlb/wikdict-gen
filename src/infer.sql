@@ -114,11 +114,7 @@ SELECT from_lang, to_lang, lexentry, sense_num, nullif(sense, '') AS sense,
     from_vocable, to_vocable,
     group_concat(source) AS sources,
     group_concat(source_detail) AS source_details,
-    -- Combine the paths that reach this target with diminishing returns on the
-    -- extra paths (see scoring.py COMBINE_DECAY). At decay=1.0 this is the old
-    -- sum(score). A direct edge alone is one path, so max==sum and gold is
-    -- unaffected; a direct_reverse that stands alone is likewise its own max.
-    max(score) + ${combine_decay} * (sum(score) - max(score)) AS score,
+    sum(score) AS score,
     from_importance, to_importance
 FROM all_inputs
 GROUP BY from_lang, to_lang, lexentry, sense_num, sense,

@@ -23,9 +23,11 @@ What's worth doing next, roughly by payoff:
 1. Add CI (pure unit tests + the e2e fixture + a `ruff` lint) — now runnable
    without a server thanks to the pyoxigraph migration (tooling-and-docs.md,
    code-quality.md).
-2. Make the translation-scoring model explicit and measurable, which is what
-   it takes to settle the `gehen → åka` regression (architecture.md #4,
-   testing.md).
+2. ~~Make the translation-scoring model explicit and measurable~~ — DONE:
+   `src/scoring.py` centralizes the constants and `src/evaluate.py` measures
+   held-out precision/recall. (The `gehen → åka` regression is data-resolved; a
+   diminishing-returns combine that targeted it was tried and reverted after the
+   harness showed it drops good translations — architecture.md #4, testing.md.)
 3. The larger architecture items: partition the 47 GB inference step (#2),
    per-language config (#3), the `written_rep_guess` join (#6), provenance
    metadata (#7).

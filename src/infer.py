@@ -61,26 +61,22 @@ class AggByScore:
         return " | ".join(result)
 
 
-def render_sql(combine_decay=scoring.COMBINE_DECAY):
-    """Read src/infer.sql and substitute the scoring constants from scoring.py.
-
-    ``combine_decay`` is a parameter (not just the constant) so the evaluation
-    harness can sweep it without editing the module.
-    """
+def render_sql():
+    """Read src/infer.sql and substitute the scoring constants from scoring.py
+    (plain SQL can't import Python)."""
     with open("src/infer.sql") as f:
         return string.Template(f.read()).substitute(
             direct_score=scoring.DIRECT_SCORE,
             reverse_score=scoring.REVERSE_SCORE,
             indirect_mult=scoring.INDIRECT_MULTIPLIER,
             indirect_floor=scoring.INDIRECT_FLOOR,
-            combine_decay=combine_decay,
         )
 
 
-def infer(combine_decay=scoring.COMBINE_DECAY, **kwargs):
+def infer(**kwargs):
     with closing(sqlite3.connect(f"{dict_dir()}/infer.sqlite3")) as conn:
         conn.create_aggregate("agg_by_score", 2, AggByScore)
-        conn.executescript(render_sql(combine_decay))
+        conn.executescript(render_sql())
         conn.isolation_level = None
         conn.execute("ANALYZE main")
 

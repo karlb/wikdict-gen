@@ -53,27 +53,48 @@ src/run.py search de en haus  # Search German-English for "haus"
 
 ### Scoring model
 All translation-scoring constants live in **`src/scoring.py`** (the single source
-of truth): the direct/reverse/indirect path weights, the `COMBINE_DECAY` that sets
-how multiple paths to one target are combined, the `AggByScore` step, and the
-`is_good`/TEI thresholds. They are substituted into `src/infer.sql` by
+of truth): the direct/reverse/indirect path weights, the `AggByScore` step, and
+the `is_good`/TEI thresholds. They are substituted into `src/infer.sql` by
 `infer.py:render_sql()` (plain SQL can't import Python) and imported by
-`generic.py`/`tei.py`. The combine is `max + COMBINE_DECAY·(sum − max)`: at decay
-1.0 it is a plain `sum()`; lower decay gives diminishing returns on extra pivot
-paths, which stops polysemous "hub" pivots from summing a wrong translation past
-the threshold (the former `de→sv "gehen" → "åka"` regression). Change a constant
-here, then re-run the evaluation harness.
+`generic.py`/`tei.py`. A target reached by several pivot paths gets the plain
+`sum` of their scores: corroboration from many pivots is evidence *for* a
+translation, so there is deliberately no decay/penalty on extra paths. Two
+penalty schemes that fought this were tried and measured net-negative on the
+precision gold, so neither shipped: a diminishing-returns combine and a per-path
+fan-out (polysemy) penalty. The fan-out penalty did lift gold precision
+(0.91→0.97) but dropped ~67% of *correct* gap-fills (retention 1.00→0.33), so
+combined F0.5 fell (see architecture.md #4). Change a constant here, then re-run
+the harness.
 
 ### Evaluating the scoring model
 `src/evaluate.py` measures a scoring change instead of eyeballing it. It holds out
 each language pair's human-curated direct translations, lets inference reproduce
-them through the other languages as pivots, and reports precision/recall/F1 at the
-`is_good` threshold (plus the `gehen → gå`/`gehen → åka` probes). It reads a built
+them through the other languages as pivots, and reports recall at the `is_good`
+threshold (plus the `gehen → gå`/`gehen → åka` probes). It reads a built
 `dictionaries/infer.sqlite3` and needs no rebuild.
+
+Held-out reconstruction measures *recall* well but counts every gap-fill (no
+direct edge — the translations inference exists to produce) as a false positive,
+so it is blind to precision. **`src/precision_gold.py`** supplies the missing
+half: a checked-in gold of inferred-only gap-fills
+(`src/tests/data/precision_gold.tsv`), labelled correct/incorrect by an
+independent LLM judge and hand-spot-checked, so it is independent of the dbnary
+edges we infer from. When that gold is present, `evaluate` combines the two —
+held-out → recall, gold → precision — into one F0.5 objective, and also reports
+how many labelled-correct gap-fills a variant *retains* (the guardrail against
+dropping good translations).
 ```bash
-uv run src/run.py evaluate            # default decay/threshold on a few pairs
-uv run src/run.py evaluate --sweep    # grid over decay x is_good threshold
-make evaluate                         # the --sweep run
+uv run src/run.py evaluate              # combined held-out recall + gold precision
+uv run src/run.py evaluate --sweep      # sweep the is_good threshold
+uv run src/run.py evaluate --experiment # production vs fan-out (polysemy) variants
+uv run src/run.py mine-gold --out cand.tsv  # (re)sample gap-fills to label for the gold
+make evaluate                           # the --sweep run
 ```
+The gold's labels are a frozen artifact (relabelling needs model access); mining
+is reproducible and decoupled from it. The confirmed-bad rows are the
+known-false-positive list (`precision_gold.confirmed_bad()`) the testing.md item
+asked for. A scoring change ships only if it improves the combined objective and
+keeps the probes green.
 
 ### Key Components
 
