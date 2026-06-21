@@ -118,13 +118,21 @@ SELECT from_lang, to_lang, lexentry, sense_num, nullif(sense, '') AS sense,
     group_concat(source) AS sources,
     group_concat(source_detail) AS source_details,
     sum(score) AS score,
-    from_importance, to_importance
+    -- importance is a property of the word, but process.py computes it per pivot
+    -- edge and falls back to 0.001 when the fuzzy written_rep match misses, so the
+    -- same target can carry different values on different paths. Keeping it in the
+    -- GROUP BY split those paths into separate rows whose scores were never summed,
+    -- silently breaking "corroboration = sum" (scoring.py). max() collapses them
+    -- (preferring the real score over the 0.001 fallback, as process.py does).
+    max(from_importance) AS from_importance, max(to_importance) AS to_importance
 FROM all_inputs
 GROUP BY from_lang, to_lang, lexentry, sense_num, sense,
-    from_vocable, to_vocable, from_importance, to_importance;
-/* TODO: The following constraint should be ok, but there's still a few violations. */
-/* CREATE UNIQUE INDEX infer_pkey ON infer(from_lang, to_lang, lexentry, */
-/*     sense, from_vocable, to_vocable); */
+    from_vocable, to_vocable;
+-- One row per group now holds by construction, so the integrity guard the original
+-- TODO wanted can be armed -- including sense_num, which legitimately splits rows
+-- (e.g. de->sv Hulda sense 01 vs 02).
+CREATE UNIQUE INDEX infer_pkey ON infer(from_lang, to_lang, lexentry, sense_num,
+    sense, from_vocable, to_vocable);
 CREATE INDEX infer_from_to_idx ON infer(from_lang, to_lang);
 
 
