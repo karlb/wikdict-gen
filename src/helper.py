@@ -91,9 +91,6 @@ def make_targets(
                 f(conn, lang)
         conn.commit()
         if not only and vacuum:
-            # conn.isolation_level = None
-            # print("vacuum", flush=True, end=" ")
-            # conn.execute("VACUUM main")
             print("analyze", flush=True, end=" ")
             conn.execute("ANALYZE main")
         print()

@@ -35,6 +35,7 @@ import csv
 import os
 import sqlite3
 import sys
+from collections import Counter
 from contextlib import closing
 from random import Random
 
@@ -67,6 +68,11 @@ FIELDS = [
     "label", "confidence", "note",
 ]
 LABELS = ("correct", "incorrect", "unsure")
+
+
+def _field(row, name):
+    """A stripped TSV cell, tolerant of a missing key or an empty value."""
+    return (row.get(name) or "").strip()
 
 
 def _candidate_rows(conn, a, b, threshold):
@@ -176,7 +182,7 @@ def load_gold(path=GOLD_PATH):
     by_pair = {}
     with open(path, newline="") as f:
         for r in csv.DictReader(f, delimiter="\t"):
-            label = (r.get("label") or "").strip()
+            label = _field(r, "label")
             if label not in ("correct", "incorrect"):
                 continue
             key = (r["from_lang"], r["to_lang"])
@@ -198,9 +204,9 @@ def confirmed_bad(path=GOLD_PATH, high_only=True):
     bad = []
     with open(path, newline="") as f:
         for r in csv.DictReader(f, delimiter="\t"):
-            if (r.get("label") or "").strip() != "incorrect":
+            if _field(r, "label") != "incorrect":
                 continue
-            if high_only and (r.get("confidence") or "").strip() != "high":
+            if high_only and _field(r, "confidence") != "high":
                 continue
             bad.append((r["from_lang"], r["to_lang"], r["from_vocable"], r["to_vocable"]))
     return bad
@@ -219,11 +225,8 @@ def mine(infer_db=None, out=None, pairs=None, **kwargs):
         rows = mine_candidates(conn, pairs)
     if out:
         write_tsv(rows, out)
-        n = len(rows)
-        strata = {}
-        for r in rows:
-            strata[r["stratum"]] = strata.get(r["stratum"], 0) + 1
-        print(f"Wrote {n} candidates to {out}: {strata}")
+        strata = Counter(r["stratum"] for r in rows)
+        print(f"Wrote {len(rows)} candidates to {out}: {dict(strata)}")
     else:
         w = csv.DictWriter(sys.stdout, fieldnames=FIELDS, delimiter="\t")
         w.writeheader()

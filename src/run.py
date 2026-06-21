@@ -1,7 +1,6 @@
 #!/usr/bin/env -S uv run python
 import os
 import argparse
-import subprocess
 import sqlite3
 from contextlib import closing
 

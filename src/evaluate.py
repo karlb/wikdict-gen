@@ -47,6 +47,7 @@ keeps one *experimental* knob it can vary without a rebuild:
     uv run src/run.py evaluate --experiment    # production vs fan-out variants
 """
 
+import math
 import os
 import sqlite3
 from contextlib import closing
@@ -211,11 +212,11 @@ def gold_report(conn, gold, alpha, threshold):
         KC += kc
         KI += ki
         BC += bc
-        prec = kc / (kc + ki) if (kc + ki) else float("nan")
-        ret = kc / bc if bc else float("nan")
+        prec = kc / (kc + ki) if (kc + ki) else math.nan
+        ret = kc / bc if bc else math.nan
         per.append([f"{a}-{b}", bc, bi, kc + ki, f"{prec:.3f}", f"{ret:.3f}"])
-    P = KC / (KC + KI) if (KC + KI) else float("nan")
-    R = KC / BC if BC else float("nan")
+    P = KC / (KC + KI) if (KC + KI) else math.nan
+    R = KC / BC if BC else math.nan
     return P, R, KC + KI, BC, per
 
 
@@ -272,11 +273,11 @@ def report(conn, eval_pairs, alpha, threshold, beta, gold=None, per_pair=True):
 
     # The combined objective (scoring-improvement.md #2): held-out reconstruction
     # gives recall, the labelled gap-fill gold gives precision. Combine them.
-    gp = gr = float("nan")
+    gp = gr = math.nan
     gold_per = []
     if gold:
         gp, gr, _, _, gold_per = gold_report(conn, gold, alpha, threshold)
-    comb = _fbeta_pr(gp, mr, beta) if gold else float("nan")
+    comb = _fbeta_pr(gp, mr, beta) if gold else math.nan
 
     if per_pair:
         rows.append(["MICRO", sum_gold, sum_pred, sum_tp,
