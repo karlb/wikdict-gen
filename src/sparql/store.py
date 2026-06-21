@@ -15,8 +15,19 @@ from glob import glob
 
 import pyoxigraph
 
-STORE_PATH = os.environ.get("WIKDICT_STORE", "dictionaries/store")
+from helper import dict_dir
+
 TTL_DIR = "virtuoso/ttl"
+
+
+def _store_path():
+    """Path to the on-disk pyoxigraph store, resolved per call.
+
+    ``WIKDICT_STORE`` overrides it; otherwise it lives under the output root
+    (``WIKDICT_DICT_DIR``, default ``dictionaries``), so redirecting that one env
+    var moves the store too.
+    """
+    return os.environ.get("WIKDICT_STORE") or f"{dict_dir()}/store"
 
 # Only the dump types the SPARQL queries actually touch: ontolex (entries, senses,
 # translations), exolex_ontolex (foreign-language entries other editions contribute
@@ -62,8 +73,9 @@ def ttl_files(ttl_dir=TTL_DIR):
     return files
 
 
-def build_store(ttl_dir=TTL_DIR, store_path=STORE_PATH):
+def build_store(ttl_dir=TTL_DIR, store_path=None):
     """(Re)build the on-disk store, each edition's dumps in its own named graph."""
+    store_path = store_path or _store_path()
     files = ttl_files(ttl_dir)
     if not files:
         raise SystemExit(f"No TTL dumps found in {ttl_dir!r}")
@@ -98,8 +110,9 @@ def build_store(ttl_dir=TTL_DIR, store_path=STORE_PATH):
     del store  # release the lock and finalize before the Makefile touches the sentinel
 
 
-def open_reader(store_path=STORE_PATH):
+def open_reader(store_path=None):
     """Open the store read-only (no lock) so many ``make -j`` readers can coexist."""
+    store_path = store_path or _store_path()
     if not os.path.isdir(store_path):
         raise SystemExit(
             f"Store {store_path!r} not found - run `uv run src/run.py load-store` first"

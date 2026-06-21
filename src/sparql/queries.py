@@ -3,6 +3,7 @@ import os
 import sqlite3
 
 from languages import language_codes3
+from helper import dict_dir
 
 from . import backend
 from . import store
@@ -277,7 +278,7 @@ def get_query(reader, table_name, query, **kwargs):
     else:
         rows = backend.run_query(reader, sparql_query, columns, lang, union=True)
 
-    path = "dictionaries/raw"
+    path = f"{dict_dir()}/raw"
     os.makedirs(path, exist_ok=True)
     conn = sqlite3.connect("%s/%s.sqlite3" % (path, db_name))
     create_table(conn, table_name)

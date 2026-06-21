@@ -2,6 +2,8 @@
 
 import sqlite3
 
+from helper import dict_dir
+
 from . import queries as sparql
 from . import store
 
@@ -37,7 +39,7 @@ def make_raw_pair(from_lang, to_lang, only):
         if not only or only == name:
             sparql.get_query(reader, name, q, from_lang=from_lang, to_lang=to_lang)
 
-    conn = sqlite3.connect(f"dictionaries/raw/{from_lang}-{to_lang}.sqlite3")
+    conn = sqlite3.connect(f"{dict_dir()}/raw/{from_lang}-{to_lang}.sqlite3")
     conn.executescript(
         """
         -- Fold the direct-link sense rows into translation_sense (dedup): the

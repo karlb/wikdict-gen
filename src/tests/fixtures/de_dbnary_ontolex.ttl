@@ -1,0 +1,70 @@
+# Hand-written dbnary fixture (German edition) for the end-to-end pipeline test.
+# Mirrors the real dbnary ontolex shape, trimmed to two entries. See
+# src/tests/test_e2e.py.
+
+@prefix dbnary:  <http://kaiko.getalp.org/dbnary#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix lexinfo: <http://www.lexinfo.net/ontology/2.0/lexinfo#> .
+@prefix lexvo:   <http://lexvo.org/id/iso639-3/> .
+@prefix ontolex: <http://www.w3.org/ns/lemon/ontolex#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix deu:     <http://kaiko.getalp.org/dbnary/deu/> .
+
+# --- Haus (noun, neuter) ---------------------------------------------------
+deu:Haus  a dbnary:Page ;
+    dbnary:describes deu:Haus__Substantiv__1 .
+
+deu:Haus__Substantiv__1  a ontolex:LexicalEntry, lexinfo:Noun ;
+    rdfs:label "Haus"@de ;
+    dcterms:language lexvo:deu ;
+    lexinfo:partOfSpeech lexinfo:noun ;
+    lexinfo:gender lexinfo:neuter ;
+    ontolex:canonicalForm deu:__cf_Haus ;
+    ontolex:sense deu:__ws_Haus_1 .
+
+deu:__cf_Haus  a ontolex:Form ;
+    ontolex:writtenRep "Haus"@de .
+
+deu:__ws_Haus_1  a ontolex:LexicalSense ;
+    dbnary:senseNumber "1" ;
+    skos:definition [ rdf:value "Gebäude, das Menschen als Wohnung dient"@de ] .
+
+# Haus -> en "house" (direct de->en; also the pivot for inferred de->sv "hus")
+deu:__tr_eng_Haus_1  a dbnary:Translation ;
+    dbnary:isTranslationOf deu:Haus__Substantiv__1 ;
+    dbnary:targetLanguage lexvo:eng ;
+    dbnary:writtenForm "house"@en ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .
+
+# --- gehen (verb) ----------------------------------------------------------
+deu:gehen  a dbnary:Page ;
+    dbnary:describes deu:gehen__Verb__1 .
+
+deu:gehen__Verb__1  a ontolex:LexicalEntry, lexinfo:Verb ;
+    rdfs:label "gehen"@de ;
+    dcterms:language lexvo:deu ;
+    lexinfo:partOfSpeech lexinfo:verb ;
+    ontolex:canonicalForm deu:__cf_gehen ;
+    ontolex:sense deu:__ws_gehen_1 .
+
+deu:__cf_gehen  a ontolex:Form ;
+    ontolex:writtenRep "gehen"@de .
+
+deu:__ws_gehen_1  a ontolex:LexicalSense ;
+    dbnary:senseNumber "1" ;
+    skos:definition [ rdf:value "sich aufrecht auf den Füßen fortbewegen"@de ] .
+
+# gehen -> sv "gå" (direct de->sv) and gehen -> en "go"
+deu:__tr_swe_gehen_1  a dbnary:Translation ;
+    dbnary:isTranslationOf deu:gehen__Verb__1 ;
+    dbnary:targetLanguage lexvo:swe ;
+    dbnary:writtenForm "gå"@sv ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .
+
+deu:__tr_eng_gehen_1  a dbnary:Translation ;
+    dbnary:isTranslationOf deu:gehen__Verb__1 ;
+    dbnary:targetLanguage lexvo:eng ;
+    dbnary:writtenForm "go"@en ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .

@@ -101,4 +101,14 @@ Requires `make stardict` to have been built first. The generated file lives at
 Unit tests are in `src/tests/`. The main test files cover:
 - `test_infer.py`: Translation inference logic
 - `test_parse.py`: Data parsing functionality
-- `test_results.py`: Output validation
+- `test_results.py`: Output validation (needs a built `dictionaries/infer.sqlite3`; skipped otherwise)
+- `test_e2e.py`: Miniature end-to-end test. Loads the hand-built de/en/sv TTL fixtures
+  in `src/tests/fixtures/` into a temporary pyoxigraph store and runs the whole
+  pipeline (raw → processed → infer → generic → wdweb), asserting on the outputs.
+  Runs on a fresh checkout in seconds with no pre-built database.
+
+### Redirecting the output directory
+All generated databases default to `dictionaries/`. Set `WIKDICT_DICT_DIR` to build
+into another directory instead (the store follows it unless `WIKDICT_STORE` is also
+set). `test_e2e.py` uses this to build into a temp dir without touching the real
+`dictionaries/`.

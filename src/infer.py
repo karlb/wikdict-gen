@@ -1,6 +1,6 @@
 import sqlite3
 
-from helper import make_targets
+from helper import make_targets, dict_dir
 
 
 def collect(conn, lang):
@@ -59,7 +59,7 @@ class AggByScore:
 
 
 def infer(**kwargs):
-    conn = sqlite3.connect("dictionaries/infer.sqlite3")
+    conn = sqlite3.connect(f"{dict_dir()}/infer.sqlite3")
     conn.create_aggregate("agg_by_score", 2, AggByScore)
     with open("src/infer.sql") as f:
         conn.executescript(f.read())
@@ -78,7 +78,7 @@ def do(lang, sql, **kwargs):
         in_path="processed",
         out_path="infer.sqlite3",
         targets=targets,
-        attach=["'dictionaries/processed/%s.sqlite3' AS lang" % from_lang],
+        attach=["'%s/processed/%s.sqlite3' AS lang" % (dict_dir(), from_lang)],
         sql=sql,
         vacuum=False,
     )

@@ -1,4 +1,4 @@
-from helper import make_targets
+from helper import make_targets, dict_dir
 from infer import AggByScore
 
 
@@ -85,8 +85,8 @@ def do(lang, sql, only, **kwargs):
         out_path="generic",
         targets=targets,
         attach=[
-            "'dictionaries/infer.sqlite3' AS infer",
-            "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
+            "'%s/infer.sqlite3' AS infer" % dict_dir(),
+            "'%s/processed/%s.sqlite3' AS lang" % (dict_dir(), from_lang),
         ],
         sql=sql,
         only=only,

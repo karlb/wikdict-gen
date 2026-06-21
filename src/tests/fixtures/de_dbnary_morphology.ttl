@@ -1,0 +1,23 @@
+# German morphology fixture: nominative singular + plural of "Haus".
+# Loaded into the same edition graph as de_dbnary_ontolex.ttl, so the form query
+# (scoped to the de edition) sees both the entry and its forms.
+
+@prefix dbnary:  <http://kaiko.getalp.org/dbnary#> .
+@prefix olia:    <http://purl.org/olia/olia.owl#> .
+@prefix ontolex: <http://www.w3.org/ns/lemon/ontolex#> .
+@prefix deu:     <http://kaiko.getalp.org/dbnary/deu/> .
+
+deu:Haus__Substantiv__1
+    ontolex:otherForm deu:__wf_Haus_sg, deu:__wf_Haus_pl .
+
+# "das Haus" -> the German inflection cleaner strips the article -> "Haus"
+deu:__wf_Haus_sg  a ontolex:Form ;
+    olia:hasCase olia:Nominative ;
+    olia:hasNumber olia:Singular ;
+    ontolex:writtenRep "das Haus"@de .
+
+# "die Häuser" -> cleaned -> "Häuser"
+deu:__wf_Haus_pl  a ontolex:Form ;
+    olia:hasCase olia:Nominative ;
+    olia:hasNumber olia:Plural ;
+    ontolex:writtenRep "die Häuser"@de .

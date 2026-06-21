@@ -3,7 +3,7 @@ import json
 
 import sqlite_spellfix
 
-from helper import make_targets
+from helper import make_targets, dict_dir
 
 
 TOKENIZER = defaultdict(lambda: "unicode61", {"en": "porter"})
@@ -339,10 +339,11 @@ def do(lang, only, sql, **kwargs):
     else:
         (from_lang, to_lang) = lang.split("-")
         attach = [
-            "'dictionaries/generic/%s-%s.sqlite3' AS other_pair" % (to_lang, from_lang),
-            "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
-            "'dictionaries/processed/%s.sqlite3' AS other" % (to_lang),
-            "'dictionaries/wdweb/wikdict.sqlite3' AS wikdict",
+            "'%s/generic/%s-%s.sqlite3' AS other_pair"
+            % (dict_dir(), to_lang, from_lang),
+            "'%s/processed/%s.sqlite3' AS lang" % (dict_dir(), from_lang),
+            "'%s/processed/%s.sqlite3' AS other" % (dict_dir(), to_lang),
+            "'%s/wdweb/wikdict.sqlite3' AS wikdict" % dict_dir(),
         ]
         targets = [
             ("translation", make_translation),

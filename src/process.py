@@ -1,6 +1,6 @@
 import re
 
-from helper import make_targets
+from helper import make_targets, dict_dir
 from languages import language_codes3
 import parse
 
@@ -288,8 +288,8 @@ def do(lang, only, sql, **kwargs):
             ("translation", make_translation),
         ]
         attach = [
-            "'dictionaries/processed/%s.sqlite3' AS lang" % (from_lang),
-            "'dictionaries/processed/%s.sqlite3' AS other_lang" % (to_lang),
+            "'%s/processed/%s.sqlite3' AS lang" % (dict_dir(), from_lang),
+            "'%s/processed/%s.sqlite3' AS other_lang" % (dict_dir(), to_lang),
         ]
 
     make_targets(

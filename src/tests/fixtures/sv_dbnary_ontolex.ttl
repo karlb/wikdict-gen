@@ -1,0 +1,72 @@
+# dbnary fixture (Swedish edition) for the end-to-end pipeline test.
+# Provides reverse-pair data and backlinks for the inference step.
+
+@prefix dbnary:  <http://kaiko.getalp.org/dbnary#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix lexinfo: <http://www.lexinfo.net/ontology/2.0/lexinfo#> .
+@prefix lexvo:   <http://lexvo.org/id/iso639-3/> .
+@prefix ontolex: <http://www.w3.org/ns/lemon/ontolex#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix swe:     <http://kaiko.getalp.org/dbnary/swe/> .
+
+# --- hus (noun) ------------------------------------------------------------
+swe:hus  a dbnary:Page ;
+    dbnary:describes swe:hus__Substantiv__1 .
+
+swe:hus__Substantiv__1  a ontolex:LexicalEntry, lexinfo:Noun ;
+    rdfs:label "hus"@sv ;
+    dcterms:language lexvo:swe ;
+    lexinfo:partOfSpeech lexinfo:noun ;
+    ontolex:canonicalForm swe:__cf_hus ;
+    ontolex:sense swe:__ws_hus_1 .
+
+swe:__cf_hus  a ontolex:Form ;
+    ontolex:writtenRep "hus"@sv .
+
+swe:__ws_hus_1  a ontolex:LexicalSense ;
+    dbnary:senseNumber "1" ;
+    skos:definition [ rdf:value "byggnad att bo i"@sv ] .
+
+swe:__tr_deu_hus_1  a dbnary:Translation ;
+    dbnary:isTranslationOf swe:hus__Substantiv__1 ;
+    dbnary:targetLanguage lexvo:deu ;
+    dbnary:writtenForm "Haus"@de ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .
+
+swe:__tr_eng_hus_1  a dbnary:Translation ;
+    dbnary:isTranslationOf swe:hus__Substantiv__1 ;
+    dbnary:targetLanguage lexvo:eng ;
+    dbnary:writtenForm "house"@en ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .
+
+# --- gå (verb) -------------------------------------------------------------
+swe:gå  a dbnary:Page ;
+    dbnary:describes swe:gå__Verb__1 .
+
+swe:gå__Verb__1  a ontolex:LexicalEntry, lexinfo:Verb ;
+    rdfs:label "gå"@sv ;
+    dcterms:language lexvo:swe ;
+    lexinfo:partOfSpeech lexinfo:verb ;
+    ontolex:canonicalForm swe:__cf_ga ;
+    ontolex:sense swe:__ws_ga_1 .
+
+swe:__cf_ga  a ontolex:Form ;
+    ontolex:writtenRep "gå"@sv .
+
+swe:__ws_ga_1  a ontolex:LexicalSense ;
+    dbnary:senseNumber "1" ;
+    skos:definition [ rdf:value "förflytta sig till fots"@sv ] .
+
+swe:__tr_deu_ga_1  a dbnary:Translation ;
+    dbnary:isTranslationOf swe:gå__Verb__1 ;
+    dbnary:targetLanguage lexvo:deu ;
+    dbnary:writtenForm "gehen"@de ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .
+
+swe:__tr_eng_ga_1  a dbnary:Translation ;
+    dbnary:isTranslationOf swe:gå__Verb__1 ;
+    dbnary:targetLanguage lexvo:eng ;
+    dbnary:writtenForm "go"@en ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .

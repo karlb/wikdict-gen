@@ -37,14 +37,24 @@ supported_langs = [
 ]
 
 
+def dict_dir():
+    """Output root for all generated databases (raw/processed/infer/...).
+
+    Defaults to ``dictionaries``; override with ``WIKDICT_DICT_DIR`` (e.g. to build
+    into a temp dir for the end-to-end test). Resolved per call so a test can set
+    the env var after import. Mirrors ``WIKDICT_STORE`` in sparql/store.py.
+    """
+    return os.environ.get("WIKDICT_DICT_DIR", "dictionaries")
+
+
 def make_targets(
     lang, out_path, targets, in_path=None, only=None, sql=None, attach=(), vacuum=True
 ):
     if out_path.endswith(".sqlite3"):
-        conn = sqlite3.connect("dictionaries/%s" % out_path)
+        conn = sqlite3.connect("%s/%s" % (dict_dir(), out_path))
     else:
-        os.makedirs("dictionaries/" + out_path, exist_ok=True)
-        conn = sqlite3.connect("dictionaries/%s/%s.sqlite3" % (out_path, lang))
+        os.makedirs("%s/%s" % (dict_dir(), out_path), exist_ok=True)
+        conn = sqlite3.connect("%s/%s/%s.sqlite3" % (dict_dir(), out_path, lang))
 
     with closing(conn):
         # Enable loading SQLite extensions (needed for spellfix1)
@@ -52,8 +62,8 @@ def make_targets(
 
         try:
             conn.execute(
-                "ATTACH DATABASE 'dictionaries/%s/%s.sqlite3' AS %s"
-                % (in_path, lang, in_path)
+                "ATTACH DATABASE '%s/%s/%s.sqlite3' AS %s"
+                % (dict_dir(), in_path, lang, in_path)
             )
         except sqlite3.dbapi2.OperationalError:
             print("Error attaching ", in_path, lang, "database")
