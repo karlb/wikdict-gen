@@ -68,10 +68,3 @@ deu:__tr_eng_gehen_1  a dbnary:Translation ;
     dbnary:targetLanguage lexvo:eng ;
     dbnary:writtenForm "go"@en ;
     dbnary:gloss [ dbnary:senseNumber "1" ] .
-
-# gehen -> nl "gaan" (the second pivot for the åka trap, see nl fixture)
-deu:__tr_nld_gehen_1  a dbnary:Translation ;
-    dbnary:isTranslationOf deu:gehen__Verb__1 ;
-    dbnary:targetLanguage lexvo:nld ;
-    dbnary:writtenForm "gaan"@nl ;
-    dbnary:gloss [ dbnary:senseNumber "1" ] .

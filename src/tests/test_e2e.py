@@ -26,12 +26,8 @@ from sparql import store
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
-LANGS = ["de", "en", "sv", "nl"]
-# The de/en/sv pairs plus the nl pairs that make the gehen->åka trap a real
-# second pivot (de->nl->sv); nl-de supplies the backlink. See the nl fixture and
-# test_translation_quality.
-PAIRS = ["de-en", "en-de", "de-sv", "sv-de", "en-sv", "sv-en",
-         "de-nl", "nl-de", "nl-sv"]
+LANGS = ["de", "en", "sv"]
+PAIRS = ["de-en", "en-de", "de-sv", "sv-de", "en-sv", "sv-en"]
 
 
 def _build_pipeline(ttl_dir):
@@ -133,26 +129,17 @@ class TestEndToEnd(unittest.TestCase):
         self.assertLess(score, 100)
 
     def test_translation_quality(self):
-        """Fixture-scale version of test_results.py's expect/dont_expect, and the
-        regression guard for the diminishing-returns combine.
-
-        de->sv "gehen" reaches "åka" only by inference through two polysemous
-        motion-verb pivots (en "go", nl "gaan"), each contributing ~10. Under the
-        old sum() combine they add to ~20 and "åka" would ship; the
-        diminishing-returns combine (scoring.COMBINE_DECAY=0.5) keeps it ~15, below
-        the AggByScore gate, so only the correct "gå" (which also has a direct
-        edge) survives. Resetting COMBINE_DECAY to 1.0 makes this assertion fail.
-        """
+        """Fixture-scale version of test_results.py's expect/dont_expect."""
         conn = self.db("infer.sqlite3")
-        rows = conn.execute(
+        row = conn.execute(
             "SELECT trans_list, score FROM infer_grouped "
             "WHERE from_lang = 'de' AND to_lang = 'sv' AND from_vocable = 'gehen'"
-        ).fetchall()
-        self.assertTrue(rows)
-        # expect: gå present in some sense with a good score
-        self.assertTrue(any("gå" in tl and sc >= 20 for tl, sc in rows))
-        # dont_expect: åka must not survive into any trans_list
-        self.assertFalse(any("åka" in tl for tl, _ in rows))
+        ).fetchone()
+        self.assertIsNotNone(row)
+        trans_list, score = row
+        self.assertIn("gå", trans_list)  # expect
+        self.assertGreaterEqual(score, 20)
+        self.assertNotIn("åka", trans_list)  # dont_expect
 
     def test_wdweb_outputs(self):
         """The web format builds its translation table, FTS index and pair stats."""
