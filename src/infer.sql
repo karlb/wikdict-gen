@@ -54,8 +54,11 @@ FROM all_trans t1
         backlink.to_vocable = t1.to_vocable AND
         backlink.back_sense = t2.sense
     )
--- Translating from a language to itself makes no sense, but it's great for debugging!
---WHERE t1.from_lang != t2.to_lang
+-- Self-pairs (A->pivot->A) are never read downstream -- every consumer queries
+-- cross-language permutation pairs -- so they were pure dead weight (~5% of `infer`).
+-- Left commented historically as a debugging aid (round-trips are handy to inspect);
+-- enabled to drop them.
+WHERE t1.from_lang != t2.to_lang
 GROUP BY t1.from_lang, t2.to_lang, t1.from_vocable, t2.to_vocable, t1.to_lang,
     t1.lexentry, t1.sense_num, t1.sense;
 
