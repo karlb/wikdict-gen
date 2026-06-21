@@ -161,8 +161,16 @@ def _fbeta_pr(p, r, beta):
 
 
 def _gold_counts(conn, a, b, rows, alpha, threshold):
-    """Build ``pred`` for (a, b, alpha) and count the labelled gap-fills the variant
-    keeps. Returns (correct_kept, incorrect_kept, n_correct, n_incorrect).
+    """Build ``pred`` for (a, b, alpha) and count the labelled gap-fills.
+    Returns (correct_kept, incorrect_kept, base_correct, base_incorrect), where
+    *kept* = the variant scores the row >= threshold, and *base* = the production
+    (alpha=0, mined) score does -- i.e. what the baseline ships at this threshold.
+
+    The mined-score baseline matters once the gold spans the sub-threshold band:
+    a [15,20) row is correctly absent from the retention denominator at threshold
+    20 (production never shipped it) but enters it at threshold 15. Since a fan-out
+    penalty only lowers scores, a variant-kept correct row is always baseline-kept,
+    so retention numerator = correct_kept.
 
     The gold is independent of the dbnary edges we infer from, so this is a real
     precision signal -- unlike the held-out harness, which counts every non-gold
@@ -174,39 +182,41 @@ def _gold_counts(conn, a, b, rows, alpha, threshold):
             "SELECT from_vocable, to_vocable FROM pred WHERE score >= ?", [threshold]
         ).fetchall()
     )
-    cp = ip = nc = ni = 0
-    for fv, tv, label in rows:
+    kc = ki = bc = bi = 0
+    for fv, tv, label, score in rows:
+        base = score >= threshold
+        in_kept = (fv, tv) in kept
         if label == "correct":
-            nc += 1
-            cp += (fv, tv) in kept
+            bc += base
+            kc += in_kept
         elif label == "incorrect":
-            ni += 1
-            ip += (fv, tv) in kept
-    return cp, ip, nc, ni
+            bi += base
+            ki += in_kept
+    return kc, ki, bc, bi
 
 
 def gold_report(conn, gold, alpha, threshold):
     """Precision and correct-retention on the labelled gap-fill gold for a variant.
 
-    gold: ``{(a, b): [(from_vocable, to_vocable, label)]}``.
+    gold: ``{(a, b): [(from_vocable, to_vocable, label, mined_score)]}``.
       precision = labelled-correct kept / all labelled kept  (the FP rate we care
                   about: of the gap-fills the model ships, how many are real)
-      retained  = labelled-correct kept / all labelled-correct  (the guardrail
-                  against the reverted decay, which dropped good gap-fills)
-    Returns (precision, retained, n_kept, n_correct, per_pair_rows)."""
-    CP = IP = NC = 0
+      retained  = labelled-correct kept / labelled-correct the baseline ships  (the
+                  guardrail against the reverted decay, which dropped good gap-fills)
+    Returns (precision, retained, n_kept, base_correct, per_pair_rows)."""
+    KC = KI = BC = 0
     per = []
     for (a, b), rows in sorted(gold.items()):
-        cp, ip, nc, ni = _gold_counts(conn, a, b, rows, alpha, threshold)
-        CP += cp
-        IP += ip
-        NC += nc
-        prec = cp / (cp + ip) if (cp + ip) else float("nan")
-        ret = cp / nc if nc else float("nan")
-        per.append([f"{a}-{b}", nc, ni, cp + ip, f"{prec:.3f}", f"{ret:.3f}"])
-    P = CP / (CP + IP) if (CP + IP) else float("nan")
-    R = CP / NC if NC else float("nan")
-    return P, R, CP + IP, NC, per
+        kc, ki, bc, bi = _gold_counts(conn, a, b, rows, alpha, threshold)
+        KC += kc
+        KI += ki
+        BC += bc
+        prec = kc / (kc + ki) if (kc + ki) else float("nan")
+        ret = kc / bc if bc else float("nan")
+        per.append([f"{a}-{b}", bc, bi, kc + ki, f"{prec:.3f}", f"{ret:.3f}"])
+    P = KC / (KC + KI) if (KC + KI) else float("nan")
+    R = KC / BC if BC else float("nan")
+    return P, R, KC + KI, BC, per
 
 
 def probe(conn, alpha, threshold):
@@ -299,9 +309,9 @@ def evaluate(infer_db=None, eval_pairs=None, threshold=None,
         conn.create_function("specificity", 2,
                              lambda fanout, alpha: float(fanout) ** (-alpha))
         build_fanout(conn)
-        from precision_gold import load_gold
+        import precision_gold
 
-        gold = load_gold()
+        gold = precision_gold.load_gold()
         if not gold:
             print("(no precision gold at src/tests/data/precision_gold.tsv; "
                   "reporting held-out recall only -- build it with `mine-gold` + labelling)")
@@ -312,11 +322,12 @@ def evaluate(infer_db=None, eval_pairs=None, threshold=None,
                 report(conn, eval_pairs, alpha, threshold, beta, gold=gold, per_pair=False)
         elif sweep:
             if gold:
-                print(f"(caveat: the precision gold is mined at the is_good threshold "
-                      f"{scoring.IS_GOOD_THRESHOLD}; below it the sweep admits an "
-                      f"unlabelled gap-fill band the gold can't score, above it gold "
-                      f"rows drop mechanically -- the gold A/Bs score *changes* at a "
-                      f"fixed threshold, e.g. --experiment, not the threshold itself)\n")
+                print(f"(caveat: cross-threshold gold P is confounded -- the [{scoring.IS_GOOD_THRESHOLD}+) "
+                      f"strata are hub-enriched (over-weighted for FPs) while `sub` "
+                      f"[{precision_gold.SUB_FLOOR},{scoring.IS_GOOD_THRESHOLD}) is uniform, so a lower "
+                      f"threshold's P is not comparable. Judge a threshold by the admitted "
+                      f"stratum's own P; the gold cleanly A/Bs scoring *changes* at a fixed "
+                      f"threshold, where enrichment cancels.)\n")
             for thr in SWEEP_THRESHOLDS:
                 report(conn, eval_pairs, fanout_alpha, thr, beta, gold=gold, per_pair=False)
         else:

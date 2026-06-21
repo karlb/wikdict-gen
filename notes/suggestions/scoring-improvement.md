@@ -118,9 +118,13 @@ changes; add the newly labelled cases as regression guards.
   enrich for likely false positives; an independent three-lens LLM judge (neutral
   / adversarial sense-leak hunter / full-sense-range, majority vote) labels them
   and the hand-spot-checked result is frozen in
-  `src/tests/data/precision_gold.tsv` (320 rows over de-en, de-fr, de-sv, fr-it;
-  291 correct, 28 incorrect, 1 unsure). Mining is reproducible (`mine-gold`);
-  labels are the persisted artifact. `confirmed_bad()` is the known-FP list.
+  `src/tests/data/precision_gold.tsv` (697 rows over all six `evaluate` recall
+  pairs plus the flagship de-en; 633 correct, 62 incorrect, 2 unsure). A `sub`
+  stratum samples the just-below-threshold [15,20) band so the gold can also score
+  a *lower* keep threshold (closing the `--sweep` blind spot below). Mining is
+  reproducible (`mine-gold`); labels are the persisted artifact, reused by key
+  when the gold grows so only new candidates are re-judged. `confirmed_bad()` is
+  the known-FP list (32 high-confidence).
 - **Combined objective (step 2).** `evaluate` reports held-out recall *and* gold
   precision and folds them into one F0.5, plus a correct-*retention* term that
   catches the dropping-good-gap-fills failure. `test_precision_gold.py` covers the
@@ -131,12 +135,15 @@ changes; add the newly labelled cases as regression guards.
   measured net-negative, does not ship (same lesson as the reverted decay, now
   quantified on precision). The åka `dont_expect` probe stays green throughout.
 
-  *Caveat the harness now prints:* the gold is mined at the is_good threshold
-  (20), so it cleanly A/Bs score *changes* at a fixed threshold (the fan-out
-  experiment) but **not the threshold itself** — the `--sweep` line at thr=15 shows
-  a higher F0.5, but that band is unlabelled, so the gain is unmeasured; raising
-  the threshold drops gold rows mechanically. To tune the threshold, re-mine the
-  gold there. Production threshold 20 is sound; raising it craters recall.
+  *Threshold finding:* the uniform `sub` sample of the [15,20) band is **~92%
+  correct** (vs hub 0.86 / near 0.93 / high 0.98), i.e. most just-below-threshold
+  gap-fills are real, so lowering `IS_GOOD_THRESHOLD` toward 15 would trade a
+  little precision for recall (combined F0.5 0.438→0.450). That is a candidate
+  change, left to a deliberate decision — it ships more output and shifts the TEI
+  cutoffs. Note the harness's cross-threshold *precision* is confounded (the
+  [20+) strata are hub-enriched while `sub` is uniform), so judge a threshold by
+  the admitted stratum's own precision, not the sweep's headline P; scoring
+  *changes* at a fixed threshold are clean because the enrichment cancels.
 
 Not done (heaviest, deferred with reason): the **sense-coherent backlink** and
 **concept agreement (P5137)** signals both need a rebuild / external data load

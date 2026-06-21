@@ -40,20 +40,25 @@ from random import Random
 
 import scoring
 
-# Pairs the gold covers. de-en/de-fr are the judge's strongest suit and the
-# flagship gap-fill pairs; de-sv is the åka-mechanism pair; fr-it adds Romance
-# breadth. These need not equal evaluate.DEFAULT_EVAL_PAIRS (the recall set).
-GOLD_PAIRS = ["de-en", "de-fr", "de-sv", "fr-it"]
+# Pairs the gold covers: all six evaluate.DEFAULT_EVAL_PAIRS (so precision and
+# held-out recall measure the same set) plus the flagship de-en. The judge is
+# reliable on these (de/en/fr/sv/it); de-sv carries the åka mechanism.
+GOLD_PAIRS = ["de-en", "de-fr", "de-sv", "fr-it", "sv-de", "fr-de", "en-sv"]
 
 GOLD_PATH = os.path.join(os.path.dirname(__file__), "tests", "data", "precision_gold.tsv")
 
-# Stratified sample sizes per pair (see mine_candidates):
+# Stratified sample sizes per pair (see mine_candidates). hub/near/high sit at and
+# above the is_good keep threshold; sub samples the just-below band so the gold can
+# also A/B a *lower* threshold (the --sweep blind spot -- that band is otherwise
+# unlabelled, so a threshold drop looks free):
 #   hub  -- near-threshold, every pivot a high-fan-out "hub" (likely false pos.)
 #   near -- the rest of the near-threshold band (mixed; the real precision test)
 #   high -- score >= HIGH_CUTOFF (mostly correct; anchors the corroboration thesis)
-N_HUB, N_NEAR, N_HIGH = 35, 30, 15
+#   sub  -- [SUB_FLOOR, is_good): below the keep cut, to score a lower threshold
+N_HUB, N_NEAR, N_HIGH, N_SUB = 35, 30, 15, 20
 NEAR_CUTOFF = 45  # score < this is the "at risk" band
 HIGH_CUTOFF = 60  # score >= this is the high-corroboration anchor
+SUB_FLOOR = 15  # mine down to here; [SUB_FLOOR, is_good) is the sub stratum
 SAMPLE_SEED = 20260621  # deterministic mining (no Date/random nondeterminism)
 
 FIELDS = [
@@ -110,30 +115,36 @@ def _candidate_rows(conn, a, b, threshold):
     return rows
 
 
-def mine_candidates(conn, pairs=None, threshold=None):
+def mine_candidates(conn, pairs=None):
     """Deterministically sample inferred-only gap-fills across pairs, stratified
     to enrich for likely false positives. Returns a list of dicts ready to label.
 
-    The fan-out temp table must already be built (evaluate.build_fanout)."""
+    The partition boundary is the is_good keep threshold, so the hub/near/high
+    strata are independent of SUB_FLOOR -- lowering the mining floor only *adds*
+    the sub stratum, leaving the others byte-for-byte reproducible (existing labels
+    can be reused by key). The fan-out temp table must already be built
+    (evaluate.build_fanout)."""
     pairs = pairs or GOLD_PAIRS
-    threshold = scoring.IS_GOOD_THRESHOLD if threshold is None else threshold
+    keep = scoring.IS_GOOD_THRESHOLD
     out = []
     for pair in pairs:
         a, b = pair.split("-")
-        rows = _candidate_rows(conn, a, b, threshold)
-        near = [r for r in rows if r[2] < NEAR_CUTOFF]
+        rows = _candidate_rows(conn, a, b, SUB_FLOOR)
+        near = [r for r in rows if keep <= r[2] < NEAR_CUTOFF]
         high = [r for r in rows if r[2] >= HIGH_CUTOFF]
+        sub = [r for r in rows if SUB_FLOOR <= r[2] < keep]
         # Hub = near-threshold candidates whose *least* ambiguous pivot is still a
         # big hub. Rank by min_fanout desc and take the top N_HUB.
         near_sorted = sorted(near, key=lambda r: (-r[3], r[0], r[1]))
         hub = near_sorted[:N_HUB]
         hub_keys = {(r[0], r[1]) for r in hub}
         rest = [r for r in near if (r[0], r[1]) not in hub_keys]
-        rng = Random(f"{SAMPLE_SEED}-{pair}")
-        near_sample = rng.sample(rest, min(N_NEAR, len(rest)))
-        rng_h = Random(f"{SAMPLE_SEED}-{pair}-high")
-        high_sample = rng_h.sample(high, min(N_HIGH, len(high)))
-        for stratum, sample in (("hub", hub), ("near", near_sample), ("high", high_sample)):
+        near_sample = Random(f"{SAMPLE_SEED}-{pair}").sample(rest, min(N_NEAR, len(rest)))
+        high_sample = Random(f"{SAMPLE_SEED}-{pair}-high").sample(high, min(N_HIGH, len(high)))
+        sub_sample = Random(f"{SAMPLE_SEED}-{pair}-sub").sample(sub, min(N_SUB, len(sub)))
+        for stratum, sample in (
+            ("hub", hub), ("near", near_sample), ("high", high_sample), ("sub", sub_sample)
+        ):
             for fv, tv, score, min_fo, max_fo, n_paths, pivots in sample:
                 out.append(dict(
                     from_lang=a, to_lang=b, from_vocable=fv, to_vocable=tv,
@@ -153,9 +164,13 @@ def write_tsv(rows, path):
 
 
 def load_gold(path=GOLD_PATH):
-    """Read the labelled gold. Returns ``{(from_lang, to_lang): [(fv, tv, label)]}``
-    over only the rows with a usable correct/incorrect label. Returns ``{}`` if the
-    gold file is absent (so the harness still runs before the gold is built)."""
+    """Read the labelled gold. Returns
+    ``{(from_lang, to_lang): [(fv, tv, label, mined_score)]}`` over only the rows
+    with a usable correct/incorrect label. ``mined_score`` is the production
+    (alpha=0) score the row was sampled at; the harness uses it as the retention
+    baseline so the sub-threshold band doesn't look dropped at a high threshold.
+    Returns ``{}`` if the gold file is absent (so the harness still runs before the
+    gold is built)."""
     if not os.path.exists(path):
         return {}
     by_pair = {}
@@ -166,7 +181,7 @@ def load_gold(path=GOLD_PATH):
                 continue
             key = (r["from_lang"], r["to_lang"])
             by_pair.setdefault(key, []).append(
-                (r["from_vocable"], r["to_vocable"], label)
+                (r["from_vocable"], r["to_vocable"], label, float(r["score"]))
             )
     return by_pair
 
@@ -191,7 +206,7 @@ def confirmed_bad(path=GOLD_PATH, high_only=True):
     return bad
 
 
-def mine(infer_db=None, out=None, threshold=None, pairs=None, **kwargs):
+def mine(infer_db=None, out=None, pairs=None, **kwargs):
     import evaluate
 
     infer_db = infer_db or f"{os.environ.get('WIKDICT_DICT_DIR', 'dictionaries')}/infer.sqlite3"
@@ -201,7 +216,7 @@ def mine(infer_db=None, out=None, threshold=None, pairs=None, **kwargs):
     with closing(sqlite3.connect(f"file:{infer_db}?mode=ro", uri=True)) as conn:
         conn.create_function("specificity", 2, lambda fanout, alpha: float(fanout) ** (-alpha))
         evaluate.build_fanout(conn)
-        rows = mine_candidates(conn, pairs, threshold)
+        rows = mine_candidates(conn, pairs)
     if out:
         write_tsv(rows, out)
         n = len(rows)
@@ -223,5 +238,4 @@ def add_subparsers(subparsers):
     p.add_argument("--infer-db", dest="infer_db", default=None)
     p.add_argument("--out", default=None, help="write TSV here (default: stdout)")
     p.add_argument("--pairs", default=None, help="comma-separated from-to pairs (default the gold pairs)")
-    p.add_argument("--threshold", type=int, default=None)
     p.set_defaults(func=mine)

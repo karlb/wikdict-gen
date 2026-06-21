@@ -62,7 +62,8 @@ class TestGoldMetric(unittest.TestCase):
 
     def test_fanout_penalty_lifts_precision(self):
         conn = _scenario_conn()
-        gold = {("de", "en"): [("A", "good", "correct"), ("A", "bad", "incorrect")]}
+        # 4th tuple element is the mined (alpha=0) score: good 24, bad 25.
+        gold = {("de", "en"): [("A", "good", "correct", 24.0), ("A", "bad", "incorrect", 25.0)]}
 
         # Production model: both ship, so precision is only 0.5; nothing is dropped.
         p, retain, kept, n_correct, _ = evaluate.gold_report(conn, gold, alpha=0.0, threshold=20)
@@ -86,7 +87,7 @@ class TestGoldIO(unittest.TestCase):
                 f.write("\t".join(precision_gold.FIELDS) + "\n")
                 cols = {c: "" for c in precision_gold.FIELDS}
                 def row(**kw):
-                    r = dict(cols, **kw)
+                    r = dict(cols, score="20", **kw)
                     return "\t".join(r[c] for c in precision_gold.FIELDS) + "\n"
                 f.write(row(from_lang="de", to_lang="en", from_vocable="Wahrheit",
                             to_vocable="fact", label="incorrect", confidence="high"))
@@ -100,7 +101,7 @@ class TestGoldIO(unittest.TestCase):
             gold = precision_gold.load_gold(path)
             # unsure rows are dropped; correct + incorrect kept, keyed by pair
             self.assertEqual(set(gold), {("de", "en")})
-            labels = sorted(l for _, _, l in gold[("de", "en")])
+            labels = sorted(l for _, _, l, _ in gold[("de", "en")])
             self.assertEqual(labels, ["correct", "incorrect", "incorrect"])
 
             # high_only guards are the unambiguous sense-leaks only

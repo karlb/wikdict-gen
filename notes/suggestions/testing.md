@@ -24,18 +24,19 @@
   samples inferred-only gap-fills (stratified to enrich for the high-fan-out "hub"
   pattern), an independent multi-lens LLM judge labels them correct/incorrect, and
   the hand-spot-checked result is frozen in `src/tests/data/precision_gold.tsv`
-  (320 rows; 28 confirmed false positives). `precision_gold.confirmed_bad()`
-  exposes the high-confidence ones. `evaluate` uses the gold for a real precision
-  term, and `test_precision_gold.py` covers the metric logic without the big DB.
+  (697 rows over all six `evaluate` recall pairs plus de-en; 62 confirmed false
+  positives). `precision_gold.confirmed_bad()` exposes the 32 high-confidence ones.
+  `evaluate` uses the gold for a real precision term, and `test_precision_gold.py`
+  covers the metric logic without the big DB.
 
 ## Open
 
 - **Promote confirmed FPs to `dont_expect` guards once a precision fix removes
-  them.** The 13 high-confidence FPs (e.g. `de:Wahrheit→fact`, `de:Hund→bitch`,
-  `fr-it:Gand→Guanto`) currently still ship, so they can't yet be passing absent-
-  assertions; they wait on a net-positive scoring change (the fan-out penalty was
-  measured net-negative — architecture.md #4 — so it isn't it). Growing the gold
-  beyond the four pairs would broaden the precision signal.
+  them.** The 32 high-confidence FPs (e.g. `de:Wahrheit→fact`, `de:Hund→bitch`,
+  `fr-it:Gand→Guanto`, `fr-de:champ→Weide`, `en-sv:regret→sörja`) currently still
+  ship, so they can't yet be passing absent-assertions; they wait on a net-positive
+  scoring change (the fan-out penalty was measured net-negative — architecture.md
+  #4 — so it isn't it).
 - **`parse.py` cleaning functions are untested for edge cases** the code
   special-cases: `clean_wiki_syntax` brace handling, `is_dummy_sense`, and
   `make_inflection_cleaner("de")` (pronoun/article stripping).
