@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sqlite3
+from contextlib import closing
 
 from helper import dict_dir
 
@@ -39,34 +40,36 @@ def make_raw_pair(from_lang, to_lang, only):
         if not only or only == name:
             sparql.get_query(reader, name, q, from_lang=from_lang, to_lang=to_lang)
 
-    conn = sqlite3.connect(f"{dict_dir()}/raw/{from_lang}-{to_lang}.sqlite3")
-    conn.executescript(
-        """
-        -- Fold the direct-link sense rows into translation_sense (dedup): the
-        -- gloss-join is empty for still-sense-linked editions (e.g. pl), the direct
-        -- link is empty for migrated ones (e.g. fr/de); together they cover both.
-        INSERT INTO translation_sense
-        SELECT d.* FROM translation_sense_direct d
-        WHERE NOT EXISTS (
-            SELECT 1 FROM translation_sense s
-            WHERE (s.lexentry, s.trans, s.sense_num) = (d.lexentry, d.trans, d.sense_num)
-        );
-        DROP TABLE translation_sense_direct;
+    with closing(
+        sqlite3.connect(f"{dict_dir()}/raw/{from_lang}-{to_lang}.sqlite3")
+    ) as conn:
+        conn.executescript(
+            """
+            -- Fold the direct-link sense rows into translation_sense (dedup): the
+            -- gloss-join is empty for still-sense-linked editions (e.g. pl), the direct
+            -- link is empty for migrated ones (e.g. fr/de); together they cover both.
+            INSERT INTO translation_sense
+            SELECT d.* FROM translation_sense_direct d
+            WHERE NOT EXISTS (
+                SELECT 1 FROM translation_sense s
+                WHERE (s.lexentry, s.trans, s.sense_num) = (d.lexentry, d.trans, d.sense_num)
+            );
+            DROP TABLE translation_sense_direct;
 
-        CREATE INDEX translation_sense_idx ON translation_sense(lexentry, trans);
-        DROP TABLE IF EXISTS translation;
+            CREATE INDEX translation_sense_idx ON translation_sense(lexentry, trans);
+            DROP TABLE IF EXISTS translation;
 
-        CREATE TABLE translation AS
-        SELECT * FROM translation_sense
-        UNION ALL
-        SELECT g.*
-        FROM translation_gloss g
-        WHERE NOT EXISTS (
-            SELECT 1 FROM translation_sense s
-            WHERE (s.lexentry, s.trans) = (g.lexentry, g.trans)
-        );
-        """
-    )
+            CREATE TABLE translation AS
+            SELECT * FROM translation_sense
+            UNION ALL
+            SELECT g.*
+            FROM translation_gloss g
+            WHERE NOT EXISTS (
+                SELECT 1 FROM translation_sense s
+                WHERE (s.lexentry, s.trans) = (g.lexentry, g.trans)
+            );
+            """
+        )
 
 
 def do(lang, only, **kwargs):

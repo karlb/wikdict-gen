@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 
 from helper import make_targets, dict_dir
 
@@ -59,12 +60,12 @@ class AggByScore:
 
 
 def infer(**kwargs):
-    conn = sqlite3.connect(f"{dict_dir()}/infer.sqlite3")
-    conn.create_aggregate("agg_by_score", 2, AggByScore)
-    with open("src/infer.sql") as f:
-        conn.executescript(f.read())
-    conn.isolation_level = None
-    conn.execute("ANALYZE main")
+    with closing(sqlite3.connect(f"{dict_dir()}/infer.sqlite3")) as conn:
+        conn.create_aggregate("agg_by_score", 2, AggByScore)
+        with open("src/infer.sql") as f:
+            conn.executescript(f.read())
+        conn.isolation_level = None
+        conn.execute("ANALYZE main")
 
 
 def do(lang, sql, **kwargs):
