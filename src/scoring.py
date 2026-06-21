@@ -32,8 +32,11 @@ INDIRECT_MULTIPLIER = 10
 INDIRECT_FLOOR = 1
 
 # --- Keep / group thresholds -------------------------------------------------
-# generic.py: score >= this AND has a lexentry => is_good.
-IS_GOOD_THRESHOLD = 20
+# generic.py: score >= this AND has a lexentry => is_good. Lowered 20 -> 15 after
+# the precision gold's uniform [15,20) sample measured ~92% correct: admitting
+# that band lifts held-out recall (0.142 -> 0.149) with gold precision and the
+# gehen->åka probes unchanged, so combined F0.5 rises 0.438 -> 0.450 (evaluate.py).
+IS_GOOD_THRESHOLD = 15
 # AggByScore diversity gate: each kept translation raises the bar for the next.
 AGG_SCORE_STEP = 20
 

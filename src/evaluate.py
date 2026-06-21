@@ -323,12 +323,12 @@ def evaluate(infer_db=None, eval_pairs=None, threshold=None,
                 report(conn, eval_pairs, alpha, threshold, beta, gold=gold, per_pair=False)
         elif sweep:
             if gold:
-                print(f"(caveat: cross-threshold gold P is confounded -- the [{scoring.IS_GOOD_THRESHOLD}+) "
-                      f"strata are hub-enriched (over-weighted for FPs) while `sub` "
-                      f"[{precision_gold.SUB_FLOOR},{scoring.IS_GOOD_THRESHOLD}) is uniform, so a lower "
-                      f"threshold's P is not comparable. Judge a threshold by the admitted "
-                      f"stratum's own P; the gold cleanly A/Bs scoring *changes* at a fixed "
-                      f"threshold, where enrichment cancels.)\n")
+                print("(caveat: the gold is FP-enriched -- the hub/near strata over-sample "
+                      "high-fan-out pivots -- so its absolute P understates production "
+                      "precision, and cross-threshold P is not comparable because the strata "
+                      "are not uniform across the score range. Judge a threshold by the "
+                      "admitted band's own precision; the gold cleanly A/Bs scoring *changes* "
+                      "at a fixed threshold, where the enrichment cancels.)\n")
             for thr in SWEEP_THRESHOLDS:
                 report(conn, eval_pairs, fanout_alpha, thr, beta, gold=gold, per_pair=False)
         else:

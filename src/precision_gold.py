@@ -49,13 +49,16 @@ GOLD_PAIRS = ["de-en", "de-fr", "de-sv", "fr-it", "sv-de", "fr-de", "en-sv"]
 GOLD_PATH = os.path.join(os.path.dirname(__file__), "tests", "data", "precision_gold.tsv")
 
 # Stratified sample sizes per pair (see mine_candidates). hub/near/high sit at and
-# above the is_good keep threshold; sub samples the just-below band so the gold can
-# also A/B a *lower* threshold (the --sweep blind spot -- that band is otherwise
-# unlabelled, so a threshold drop looks free):
+# above the is_good keep threshold. The `sub` stratum sampled the just-below band
+# to A/B a *lower* threshold (the --sweep blind spot); its uniform [15,20) sample
+# measured ~92% correct, which is what justified lowering IS_GOOD_THRESHOLD 20 -> 15.
+# Now that the keep threshold *is* SUB_FLOOR, `sub` is empty for fresh mining and
+# its frozen rows score the model as ordinary kept gap-fills; drop SUB_FLOOR and
+# re-mine to probe an even lower threshold.
 #   hub  -- near-threshold, every pivot a high-fan-out "hub" (likely false pos.)
 #   near -- the rest of the near-threshold band (mixed; the real precision test)
 #   high -- score >= HIGH_CUTOFF (mostly correct; anchors the corroboration thesis)
-#   sub  -- [SUB_FLOOR, is_good): below the keep cut, to score a lower threshold
+#   sub  -- [SUB_FLOOR, is_good): below the keep cut (empty once SUB_FLOOR == keep)
 N_HUB, N_NEAR, N_HIGH, N_SUB = 35, 30, 15, 20
 NEAR_CUTOFF = 45  # score < this is the "at risk" band
 HIGH_CUTOFF = 60  # score >= this is the high-corroboration anchor
