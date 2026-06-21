@@ -91,12 +91,20 @@ class TestParseCleanup(unittest.TestCase):
         for d in dummies:
             self.assertEqual(is_dummy_sense(d, "fr"), True, d)
         self.assertEqual(is_dummy_sense("Le sense", "fr"), False)
+        # the dummy-sense detector is French-only: the same text is not stripped
+        # for other languages.
+        self.assertEqual(is_dummy_sense("à trier", "de"), False)
 
     def test_braces_nocat(self):
         self.assertEqual(
             clean_wiki_syntax("Saillir une femelle (la féconder).|9 {{trans|nocat=1"),
             "Saillir une femelle (la féconder).",
         )
+
+    def test_braces_notclosed(self):
+        # dbnary issue #25 workaround: an unclosed {{template is stripped from
+        # the {{ to the end of the string.
+        self.assertEqual(clean_wiki_syntax("Wasser {{Vorlage ohne Ende"), "Wasser")
 
 
 class TestCleanInflection(unittest.TestCase):
@@ -106,6 +114,11 @@ class TestCleanInflection(unittest.TestCase):
         self.assertEqual(cleaner("es ist schön"), "schön")
         self.assertEqual(cleaner("wirf!"), "wirf")
         self.assertEqual(cleaner("die Bäume"), "Bäume")
+
+    def test_other_lang_is_identity(self):
+        # only German has an inflection cleaner; every other language passes
+        # the form through untouched.
+        self.assertEqual(make_inflection_cleaner("en")("the houses"), "the houses")
 
 
 if __name__ == "__main__":

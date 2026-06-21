@@ -27,6 +27,26 @@ class TestInfer(unittest.TestCase):
         self.assertEqual(cur.fetchall(), [("Wohnung | Haus",)])
 
 
+class TestAggByScore(unittest.TestCase):
+    def agg(self, *pairs):
+        a = AggByScore()
+        for trans, score in pairs:
+            a.step(trans, score)
+        return a.finalize()
+
+    def test_empty(self):
+        self.assertEqual(AggByScore().finalize(), "")
+
+    def test_boundary_step(self):
+        # The diversity gate raises the bar by AGG_SCORE_STEP per kept target
+        # (0, then the step, ...). A target scored *exactly* at the bar is kept;
+        # the first one below it stops the list.
+        step = scoring.AGG_SCORE_STEP
+        self.assertEqual(
+            self.agg(("a", 100), ("b", step), ("c", step - 1)), "a | b"
+        )
+
+
 class TestRenderSql(unittest.TestCase):
     def test_no_leftover_placeholders(self):
         """infer.sql substitutes cleanly from scoring.py (guards new ${...})."""

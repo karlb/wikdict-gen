@@ -28,6 +28,11 @@
   positives). `precision_gold.confirmed_bad()` exposes the 32 high-confidence ones.
   `evaluate` uses the gold for a real precision term, and `test_precision_gold.py`
   covers the metric logic without the big DB.
+- **`parse.py` special-cased branches now have edge-case coverage** in
+  `test_parse.py`: the `clean_wiki_syntax` unclosed-`{{`-template workaround
+  (dbnary #25), and the language gates — `is_dummy_sense` is French-only,
+  `make_inflection_cleaner` is the identity for non-German. The `AggByScore`
+  diversity gate's exact rising-bar boundary is pinned in `test_infer.py`.
 
 ## Open
 
@@ -37,6 +42,3 @@
   ship, so they can't yet be passing absent-assertions; they wait on a net-positive
   scoring change (the fan-out penalty was measured net-negative — architecture.md
   #4 — so it isn't it).
-- **`parse.py` cleaning functions are untested for edge cases** the code
-  special-cases: `clean_wiki_syntax` brace handling, `is_dummy_sense`, and
-  `make_inflection_cleaner("de")` (pronoun/article stripping).
