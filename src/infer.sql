@@ -1,3 +1,7 @@
+-- Scoring constants (the dollar-brace placeholders below) are the single source
+-- of truth in src/scoring.py, substituted here by infer.py:render_sql() (plain
+-- SQL can't import Python). Do not hardcode scores in this file.
+
 DROP VIEW IF EXISTS backlink_full;
 CREATE VIEW backlink_full AS
 SELECT trans.from_lang, trans.to_lang,
@@ -33,7 +37,7 @@ SELECT t1.from_lang, t2.to_lang, 'indirect' AS source,
         END || ':' || t1.to_vocable AS source_detail,
     t1.from_vocable, t2.to_vocable,
     t1.lexentry, t1.sense_num, t1.sense,
-    coalesce(round(max(backlink_score * backlink_score) * 10, 1), 1) AS score,
+    coalesce(round(max(backlink_score * backlink_score) * ${indirect_mult}, 1), ${indirect_floor}) AS score,
     t1.from_importance, t2.to_importance
 FROM all_trans t1
     JOIN all_trans t2 ON (
@@ -62,7 +66,7 @@ SELECT from_lang, to_lang, 'direct' AS source,
     null AS source_detail,
     from_vocable, to_vocable,
     lexentry, sense_num, sense,
-    100 AS score,
+    ${direct_score} AS score,
     from_importance, to_importance
 FROM all_trans;
 
@@ -73,7 +77,7 @@ SELECT to_lang AS from_lang, from_lang AS to_lang, 'direct_reverse' AS source,
     null AS source_detail,
     to_vocable AS from_vocable, from_vocable AS to_vocable,
     null AS lexentry, null AS sense_num, null AS sense,
-    2 AS score,
+    ${reverse_score} AS score,
     from_importance, to_importance
 FROM all_trans;
 
@@ -110,7 +114,11 @@ SELECT from_lang, to_lang, lexentry, sense_num, nullif(sense, '') AS sense,
     from_vocable, to_vocable,
     group_concat(source) AS sources,
     group_concat(source_detail) AS source_details,
-    sum(score) AS score,
+    -- Combine the paths that reach this target with diminishing returns on the
+    -- extra paths (see scoring.py COMBINE_DECAY). At decay=1.0 this is the old
+    -- sum(score). A direct edge alone is one path, so max==sum and gold is
+    -- unaffected; a direct_reverse that stands alone is likewise its own max.
+    max(score) + ${combine_decay} * (sum(score) - max(score)) AS score,
     from_importance, to_importance
 FROM all_inputs
 GROUP BY from_lang, to_lang, lexentry, sense_num, sense,

@@ -1,7 +1,9 @@
 import sqlite3
+import string
 from contextlib import closing
 
 from helper import make_targets, dict_dir
+import scoring
 
 
 def collect(conn, lang):
@@ -55,15 +57,30 @@ class AggByScore:
                 result.append(trans)
             else:
                 break
-            min_score += 20
+            min_score += scoring.AGG_SCORE_STEP
         return " | ".join(result)
 
 
-def infer(**kwargs):
+def render_sql(combine_decay=scoring.COMBINE_DECAY):
+    """Read src/infer.sql and substitute the scoring constants from scoring.py.
+
+    ``combine_decay`` is a parameter (not just the constant) so the evaluation
+    harness can sweep it without editing the module.
+    """
+    with open("src/infer.sql") as f:
+        return string.Template(f.read()).substitute(
+            direct_score=scoring.DIRECT_SCORE,
+            reverse_score=scoring.REVERSE_SCORE,
+            indirect_mult=scoring.INDIRECT_MULTIPLIER,
+            indirect_floor=scoring.INDIRECT_FLOOR,
+            combine_decay=combine_decay,
+        )
+
+
+def infer(combine_decay=scoring.COMBINE_DECAY, **kwargs):
     with closing(sqlite3.connect(f"{dict_dir()}/infer.sqlite3")) as conn:
         conn.create_aggregate("agg_by_score", 2, AggByScore)
-        with open("src/infer.sql") as f:
-            conn.executescript(f.read())
+        conn.executescript(render_sql(combine_decay))
         conn.isolation_level = None
         conn.execute("ANALYZE main")
 

@@ -28,6 +28,11 @@ wdweb: ${ALL_WDWEB_PAIRS} ${ALL_WDWEB_LANGS}
 test:
 	uv run -m unittest discover -s src
 
+# On-demand: measure the translation-scoring model (held-out precision/recall).
+# Not a build gate; reads the built dictionaries/infer.sqlite3.
+evaluate: dictionaries/infer.sqlite3
+	uv run src/run.py evaluate --sweep
+
 clean:
 	rm -fr dictionaries
 

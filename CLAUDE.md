@@ -51,6 +51,30 @@ src/run.py search de en haus  # Search German-English for "haus"
 4. **Inference** (`src/infer.py`): Generates translation inferences between language pairs
 5. **Output Generation**: Creates multiple dictionary formats
 
+### Scoring model
+All translation-scoring constants live in **`src/scoring.py`** (the single source
+of truth): the direct/reverse/indirect path weights, the `COMBINE_DECAY` that sets
+how multiple paths to one target are combined, the `AggByScore` step, and the
+`is_good`/TEI thresholds. They are substituted into `src/infer.sql` by
+`infer.py:render_sql()` (plain SQL can't import Python) and imported by
+`generic.py`/`tei.py`. The combine is `max + COMBINE_DECAY·(sum − max)`: at decay
+1.0 it is a plain `sum()`; lower decay gives diminishing returns on extra pivot
+paths, which stops polysemous "hub" pivots from summing a wrong translation past
+the threshold (the former `de→sv "gehen" → "åka"` regression). Change a constant
+here, then re-run the evaluation harness.
+
+### Evaluating the scoring model
+`src/evaluate.py` measures a scoring change instead of eyeballing it. It holds out
+each language pair's human-curated direct translations, lets inference reproduce
+them through the other languages as pivots, and reports precision/recall/F1 at the
+`is_good` threshold (plus the `gehen → gå`/`gehen → åka` probes). It reads a built
+`dictionaries/infer.sqlite3` and needs no rebuild.
+```bash
+uv run src/run.py evaluate            # default decay/threshold on a few pairs
+uv run src/run.py evaluate --sweep    # grid over decay x is_good threshold
+make evaluate                         # the --sweep run
+```
+
 ### Key Components
 
 - **`src/run.py`**: Main entry point with subcommand dispatch

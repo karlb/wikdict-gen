@@ -53,6 +53,9 @@ if __name__ == "__main__":
     import generic
 
     generic.add_subparsers(subparsers)
+    import evaluate
+
+    evaluate.add_subparsers(subparsers)
 
     search = subparsers.add_parser("search")
     search.add_argument("from_lang")

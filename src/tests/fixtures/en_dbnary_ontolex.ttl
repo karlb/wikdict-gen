@@ -66,6 +66,13 @@ eng:__tr_swe_go_1  a dbnary:Translation ;
     dbnary:writtenForm "gå"@sv ;
     dbnary:gloss [ dbnary:senseNumber "1" ] .
 
+# go -> sv "åka" (one of the two polysemous pivots for the de->sv åka trap)
+eng:__tr_swe_go_aka_1  a dbnary:Translation ;
+    dbnary:isTranslationOf eng:go__Verb__1 ;
+    dbnary:targetLanguage lexvo:swe ;
+    dbnary:writtenForm "åka"@sv ;
+    dbnary:gloss [ dbnary:senseNumber "1" ] .
+
 eng:__tr_deu_go_1  a dbnary:Translation ;
     dbnary:isTranslationOf eng:go__Verb__1 ;
     dbnary:targetLanguage lexvo:deu ;

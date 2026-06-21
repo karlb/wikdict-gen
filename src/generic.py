@@ -1,16 +1,17 @@
 from helper import make_targets, dict_dir
 from infer import AggByScore
+import scoring
 
 
 def translation(conn, lang):
     conn.execute("DROP TABLE IF EXISTS main.translation")
     conn.execute(
-        """
+        f"""
         CREATE TABLE translation AS
         WITH lang_trans AS (
             SELECT lexentry, sense_num, sense,
                 from_vocable AS written_rep, trans_list, score,
-                score >= 20 AND lexentry IS NOT NULL AS is_good,
+                score >= {scoring.IS_GOOD_THRESHOLD} AND lexentry IS NOT NULL AS is_good,
                 from_importance * to_importance AS importance
             FROM infer.infer_grouped
             WHERE from_lang = ? AND to_lang = ?

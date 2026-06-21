@@ -17,6 +17,7 @@ from collections import OrderedDict
 
 from languages import language_names, language_codes3
 from helper import supported_langs
+import scoring
 
 
 INCLUDE_INFLECTED = True
@@ -208,8 +209,8 @@ def get_translations(from_lang, to_lang):
         )
         good_translations = next(
             conn.execute(
-                """
-            SELECT count(*) FROM translation WHERE translation_score >= 100
+                f"""
+            SELECT count(*) FROM translation WHERE translation_score >= {scoring.TEI_GOOD_SCORE}
         """
             )
         )[0]
@@ -217,7 +218,7 @@ def get_translations(from_lang, to_lang):
         conn.execute("BEGIN")
         measured_exec("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
 
-        expected_good_translations = 45000
+        expected_good_translations = scoring.TEI_TARGET_GOOD
         min_translation_score = round(
             (good_translations - 1000) / expected_good_translations * 100
         )
