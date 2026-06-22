@@ -7,8 +7,7 @@ shipped, so the old `bugs.md` and `oxigraph_spike.md` are gone — git history h
 them.)
 
 - [architecture.md](architecture.md) — **Open:** partition the 47 GB inference
-  step (#2), per-language config (#3), the `written_rep_guess` join (#6),
-  provenance metadata (#7).
+  step (#2), per-language config (#3), provenance metadata (#7).
 - [scoring-improvement.md](scoring-improvement.md) — no open task; kept as the
   record of the settled scoring decisions (precision gold, combined objective,
   threshold 20→15, reverted decay/fan-out, P5137 rejected) so they aren't
@@ -25,5 +24,4 @@ What's worth doing next, roughly by payoff:
 1. **Add CI** (pure unit tests + the e2e fixture + a `ruff` lint) — now runnable
    without a server thanks to the pyoxigraph migration.
 2. **The larger architecture items:** partition the 47 GB inference step (#2),
-   per-language config (#3), the `written_rep_guess` join (#6), provenance
-   metadata (#7).
+   per-language config (#3), provenance metadata (#7).

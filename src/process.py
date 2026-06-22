@@ -182,11 +182,7 @@ def make_importance(conn, lang):
         -- The input data should already be distinct, but Virtuoso fails to do
         -- a proper GROUP BY for some texts like 'eng/??', so we need to group
         -- here, again.
-        SELECT vocable, avg(score) AS score,
-           -- TODO: This is an ugly hack. A vocable/page does not have a single
-           --       representation. Case might be different, probably other
-           --       things, too.
-           replace(substr(vocable, 5), '_', ' ') AS written_rep_guess
+        SELECT vocable, avg(score) AS score
         FROM raw.importance
         WHERE substr(vocable, 0, 4) = '%(lang3)s'
         GROUP BY vocable;
@@ -197,7 +193,7 @@ def make_importance(conn, lang):
         -- for the typeahead and similar features
         DROP TABLE IF EXISTS main.rel_importance;
         CREATE TABLE rel_importance AS
-        SELECT vocable, score, score / high_score AS rel_score, written_rep_guess
+        SELECT vocable, score, score / high_score AS rel_score
         FROM importance, (
             SELECT avg(score) AS high_score
             FROM (
@@ -206,8 +202,25 @@ def make_importance(conn, lang):
             )
         );
         CREATE UNIQUE INDEX imp_unique_vocable ON importance(vocable);
-        CREATE UNIQUE INDEX imp_unique_rep ON importance(written_rep_guess);
-        CREATE UNIQUE INDEX rel_imp_unique_rep ON rel_importance(written_rep_guess);
+        CREATE UNIQUE INDEX rel_imp_unique_vocable ON rel_importance(vocable);
+
+        -- Importance is keyed by vocable (the page), but several consumers only
+        -- have the written representation to look up by (a translation target,
+        -- an inferred from-word, a spellfix term). Map importance onto the real
+        -- written_rep via the vocable->written_rep mapping that already exists in
+        -- raw.entry, instead of reconstructing it from the vocable URL. The old
+        -- written_rep_guess (`replace(substr(vocable, 5), '_', ' ')`) silently
+        -- dropped every row whose page title didn't match the canonical form --
+        -- any case difference, and every multi-word entry, since the URL keeps
+        -- the '_'. A written_rep can map to several vocables; keep the most
+        -- important one.
+        DROP TABLE IF EXISTS main.rep_importance;
+        CREATE TABLE rep_importance AS
+        SELECT written_rep, max(rel_score) AS rel_score
+        FROM raw.entry JOIN rel_importance USING (vocable)
+        WHERE written_rep IS NOT NULL
+        GROUP BY written_rep;
+        CREATE UNIQUE INDEX rep_imp_unique_rep ON rep_importance(written_rep);
     """
         % dict(lang3=language_codes3[lang])
     )
@@ -231,14 +244,14 @@ def make_translation(conn, lang):
             parse_sense_num(sense_num) AS sense_num,
             sense_num AS orig_sense_num,
             parse_sense(sense) AS sense,
-            written_rep,
+            lang.entry.written_rep AS written_rep,
             clean_wiki_syntax(trans) AS trans,
             coalesce(to_imp.rel_score, 0.001) AS to_importance,
             from_imp.rel_score AS from_importance
         FROM raw.translation
             JOIN lang.entry USING (lexentry)
             JOIN lang.rel_importance from_imp USING (vocable)
-            LEFT JOIN other_lang.rel_importance to_imp ON (trans = to_imp.written_rep_guess)
+            LEFT JOIN other_lang.rep_importance to_imp ON (trans = to_imp.written_rep)
     """
     )
     # The outer query removes duplicates in the case of different lexentries

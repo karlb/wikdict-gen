@@ -5,9 +5,12 @@ Bigger-picture ideas, roughly ordered by expected payoff.
 **Shipped (removed from this list):** #1 Virtuoso → embedded pyoxigraph store;
 #4 explicit, measurable scoring model (`src/scoring.py` + `src/evaluate.py` +
 `src/precision_gold.py`, threshold 20 → 15); #5 the miniature end-to-end fixture
-(`src/tests/test_e2e.py`). The scoring lessons that came out of #4 (corroboration
-must not be penalised; the reverted decay/fan-out experiments) live in
-`scoring-improvement.md`.
+(`src/tests/test_e2e.py`); #6 join importance through the real
+`vocable → written_rep` mapping in `raw.entry` instead of `written_rep_guess`
+(added a `rep_importance` table; recovered the whole multi-word vocabulary that
+the URL guess silently dropped from spellfix). The scoring lessons that came out
+of #4 (corroboration must not be penalised; the reverted decay/fan-out
+experiments) live in `scoring-improvement.md`.
 
 ## 2. Partition the inference step (the 47 GB bottleneck)
 
@@ -50,20 +53,6 @@ defaults for everything. The pipeline modules then ask the config instead
 of `if lang == "de"`. Two benefits: "what does it take to add/improve a
 language?" has one answer, and the generic pipeline code stops accumulating
 special cases. This is a mechanical refactor — no behavior change.
-
-## 6. Join importance through real data instead of `written_rep_guess`
-
-`process.py make_importance` reconstructs the written representation from
-the vocable URL (`replace(substr(vocable, 5), '_', ' ')`) — flagged in the
-code itself as an ugly hack with known case problems. But the actual
-mapping already exists in the raw data: `basic_entry_query` extracts
-`?vocable` together with `?written_rep` into `raw.entry`. Importance could
-be joined to entries via vocable directly (and to translations via
-entry→vocable), eliminating the guess and its silent mismatches. This is a
-data-flow fix, not a cleanup: every place that joins on
-`written_rep_guess` (`spellfix_entry` ranking, `rel_importance` lookups in
-`process.py` and `generic.py`) currently loses rows whenever the guess
-doesn't match.
 
 ## 7. Record provenance in the published artifacts
 

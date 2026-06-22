@@ -59,14 +59,14 @@ def simple_translation(conn, lang):
         SELECT from_vocable AS written_rep,
             agg_by_score(to_vocable, max_score) AS trans_list,
             max(max_score) AS max_score,
-            rel_importance.rel_score AS rel_importance
+            ri.rel_score AS rel_importance
         FROM (
             SELECT from_vocable, to_vocable, max(score) AS max_score
             FROM infer
             WHERE (from_lang, to_lang) = ('{from_lang}', '{to_lang}')  -- interpolate langs for perf reasons
             GROUP BY from_vocable, to_vocable
             ORDER BY from_vocable, coalesce(min(sense_num), '999'), max(score) DESC
-        ) LEFT JOIN lang.rel_importance ON (from_vocable = lang.rel_importance.written_rep_guess)
+        ) LEFT JOIN lang.rep_importance ri ON (from_vocable = ri.written_rep)
         GROUP BY from_vocable
         """
     )

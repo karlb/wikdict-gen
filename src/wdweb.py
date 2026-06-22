@@ -48,10 +48,9 @@ def make_entry(conn, lang):
             score * score * score AS rank  -- increase weight of rank over distance
         FROM main.entry
             JOIN (
-                SELECT substr(vocable, 5) AS written_rep,
-                       rel_score * 100 AS score
+                SELECT vocable, rel_score * 100 AS score
                 FROM rel_importance
-            ) USING (written_rep)
+            ) USING (vocable)
     """
     )
 
