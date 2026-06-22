@@ -64,8 +64,13 @@ download:
 # would otherwise race. The sub-make also re-expands the $(wildcard) below *after*
 # the download, so brand-new editions are picked up. `make -j update` still
 # parallelizes the build (the sub-make inherits the jobserver).
+#
+# Finish with `check` so a regression can't ship silently: it runs only after the
+# wdweb sub-make returns (separate sub-makes serialize), and check-translations
+# exits non-zero — failing `update` — if any edition's definition ratio collapsed.
 update: download
 	$(MAKE) wdweb
+	$(MAKE) check
 
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: dictionaries/store/.loaded
 	uv run src/run.py raw $*
