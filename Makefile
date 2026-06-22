@@ -2,7 +2,7 @@ MAKEFLAGS += --no-builtin-rules
 # Update with `uv run src/helper.py makefile > generated.mk`
 include generated.mk
 
-.PHONY: test extensions download
+.PHONY: test extensions download update
 .SECONDARY:  # keep intermediate files
 .DELETE_ON_ERROR:
 
@@ -54,6 +54,18 @@ dictionaries/store/.loaded: $(wildcard virtuoso/ttl/*_dbnary_ontolex.ttl.bz2) \
 download:
 	wget -r -nd --timestamping --no-parent --accept '*.ttl.bz2' \
 		--directory-prefix=virtuoso/ttl http://kaiko.getalp.org/static/ontolex/latest/
+	# Sanity check: count dumps per modification date. A single date means every
+	# edition came from the same dbnary release; a split flags stale/partial dumps.
+	ls -l virtuoso/ttl/*.ttl.bz2 --time-style=long-iso | awk '{print $$6}' | sort | uniq -c
+
+# Refresh the dumps, then rebuild everything downstream — in that order. Use this
+# instead of `make download wdweb`: download is phony, so it can't be a plain
+# prerequisite of the build without re-fetching on every run, and under -j the two
+# would otherwise race. The sub-make also re-expands the $(wildcard) below *after*
+# the download, so brand-new editions are picked up. `make -j update` still
+# parallelizes the build (the sub-make inherits the jobserver).
+update: download
+	$(MAKE) wdweb
 
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: dictionaries/store/.loaded
 	uv run src/run.py raw $*
