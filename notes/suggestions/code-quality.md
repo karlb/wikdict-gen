@@ -1,20 +1,9 @@
 # Code quality
 
-Smaller cleanups; none urgent, all low-risk.
-
-## Resolved (from the 2026-06-12 review)
-
-- Dead `make_for_langs` / `make_for_lang_permutations` (`helper.py`) and the
-  unused `entry_query` (`sparql/queries.py`) are removed.
-- Connections are closed now (`run.py`, `helper.py make_targets`, `tei.py`,
-  `infer.py`'s `open("src/infer.sql")`), clearing the test-time
-  `ResourceWarning`.
-- `src/sitemap.py` no longer calls `main()` at import time and doesn't open the
-  DB at module level.
-- `src/tei.py` uses plain `xml.etree.ElementTree` (the deprecated
-  `cElementTree` alias is gone).
-- The `global cols` trap in the SPARQL paging layer went away with the
-  pyoxigraph migration (the HTTP/paging code it lived in no longer exists).
+Smaller cleanups; none urgent, all low-risk. (The 2026-06-12 review's resolved
+items — dead `make_for_langs`/`entry_query`, closed connections, the sitemap
+import-time guard, `xml.etree.ElementTree`, the SPARQL-paging `global cols` trap
+— have shipped and were removed.)
 
 ## Open
 

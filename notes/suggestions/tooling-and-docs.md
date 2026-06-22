@@ -1,15 +1,9 @@
 # Tooling, build & docs
 
-## Resolved (pip/venv → uv migration leftovers)
-
-- `Makefile` no longer has the dead `venv` prerequisite — `all: wdweb check`.
-- `src/run.py` shebang is `#!/usr/bin/env -S uv run python`.
-- `README.md` and `CLAUDE.md` describe the uv + pyoxigraph workflow.
-- `pyproject.toml` has a real `description`, and `src/wdweb.py` loads spellfix
-  via the `sqlite-spellfix` package (`sqlite_spellfix.extension_path()`)
-  instead of the checked-in `lib/spellfix1.so`.
-- The hardcoded Virtuoso endpoint is gone with the migration to the embedded
-  pyoxigraph store.
+(The pip/venv → uv migration leftovers — the dead `venv` prerequisite, the
+`uv run` shebang, the README/CLAUDE docs, the `pyproject` description, the
+`sqlite-spellfix` package, the dropped Virtuoso endpoint — have all shipped and
+were removed from this list.)
 
 ## Open
 

@@ -1,195 +1,55 @@
-# Scoring model: problem statement and improvement plan
+# Scoring model: settled decisions
 
-## Problem
+The measurement infrastructure this plan called for has shipped, and the
+candidate scoring signals have been decided. There is no open scoring task left;
+this file is kept as the record of *why* the model is what it is, so the same
+ideas aren't re-proposed.
 
-WikDict infers translations by pivoting through other languages (`A → pivot → B`)
-and scoring each candidate; the score decides what ships. Two things are now
-clear and unresolved.
+## The crux lesson (do not relitigate)
 
-**1. We can measure recall but not precision.** `src/evaluate.py` hides a pair's
-human-curated direct edges and checks how well inference reconstructs them. That
-is a sound *recall* signal. But the translations inference exists to produce are
-the ones with *no* direct edge — the gap-fills — and for those we have no ground
-truth. The harness counts every non-gold prediction as a false positive, which
-understates precision and, worse, makes the metric blind to the harm we care
-about most: shipping a *wrong* translation. So we cannot currently tell whether a
-scoring change trades good gap-fills for bad ones, or the reverse.
-
-**2. The failure mode is real but rare, and easy to "fix" wrongly.** The
-`de→sv gehen→åka` case (German "to walk" → Swedish "to travel by vehicle") came
-from a *polysemous pivot*: "go" / "aller" / "ir" each translate the walking sense
-of "gehen" yet also mean "travel", so they leak to "åka". A diminishing-returns
-combine that penalised having many pivot paths did suppress it — and a
-differential sample showed it also dropped ~71% of inferred-only de→en gap-fills,
-nearly all correct (`schnell→quickly`, `fliehen→run away`, `Erbschaft→inheritance`).
-
-The lesson is the crux of this document: **corroboration by many independent
-pivots is evidence *for* a translation, not against it.** The åka failure is not
-"too many paths"; it is "one *ambiguous* pivot replicated across languages." A
+**Corroboration by many independent pivots is evidence *for* a translation, not
+against it.** The `de→sv gehen→åka` failure is not "too many paths"; it is "one
+*ambiguous* pivot (English "go" = walk/go/travel) replicated across languages." A
 principled fix must separate those two cases, and any change must be measured on
-precision — not only recall — before it ships.
+precision — not only recall — before it ships. Two schemes that penalised
+corroboration were measured net-negative and reverted:
 
-## Goal
+- **Diminishing-returns decay** (`max + decay·(sum − max)`) — dropped ~71% of
+  correct de→en gap-fills.
+- **Pivot fan-out penalty** (`evaluate --experiment`) — lifted gold precision
+  0.91→0.97 but collapsed retention to 0.33 and recall to 0.11, so combined F0.5
+  fell 0.44→0.39.
 
-Ship more correct translations and fewer wrong ones: a precision/recall tradeoff
-on the *actual output*, precision weighted higher (a wrong dictionary entry is
-worse than a missing one — the project uses F0.5). Concretely, raise precision on
-inferred-only gap-fills without losing recall, measured rather than eyeballed.
+The plain `sum` combine wins; keep these as cautionary baselines.
 
-## Principles
+## Decided / shipped
 
-- **Measure before shipping.** No scoring change lands without an A/B on a
-  held-out objective that includes a *precision* term. The harness already has
-  the right shape (recompute scores on a built DB, no full rebuild); it is
-  missing a precision gold.
-- **Target the right signal.** The discriminating feature for the failure mode is
-  per-pivot *ambiguity* and *sense-coherence*, not aggregate path count. Reject
-  any signal that penalises corroboration.
-- **Be honest about the metric.** Held-out reconstruction is a recall proxy with
-  a precision blind spot; say so wherever it is used.
-- **Stay minimal.** Prefer signals computable from data already in the store /
-  `all_trans`. Keep `scoring.py` the single source of truth; gate each candidate
-  behind a constant that defaults to current behaviour.
-
-## Task
-
-### 1. Build a precision gold (the missing measurement)
-A precision gold must be **independent of the dbnary translation edges we infer
-from**. Our own Wiktionary data can't serve: a gap-fill has no direct edge by
-definition, and any related Wiktionary signal (reverse edge, backlink,
-cross-edition agreement) is either absent for a true gap or already feeds the
-inference we are grading — circular. The gold needs an outside judge.
-
-- **(a) LLM-judged + human-spot-checked labels.** Ask a model "is `de:X → en:Y` a
-  correct translation?" over a sample of inferred-only pairs (mine candidates from
-  `evaluate` differentials and the high-fan-out "hub" pattern). This is
-  independent of dbnary, scales to thousands, and needs no new data pipeline.
-  Spot-check by hand, because the judge errs on low-resource pairs and subtle
-  senses. A few hundred labelled pairs per major pair is enough to A/B a change;
-  keep the confirmed-bad ones next to `expect`/`dont_expect` as regression guards.
-- **(b) Manual labelling** for the highest-value cases and to validate the judge.
-
-Note: Wikidata P5137 concept agreement is deliberately **not** the gold here. It
-is more valuable as a scoring feature (step 3), and a signal used for scoring
-cannot also be the gold that judges it (circular).
-
-### 2. Define the objective
-Report Fβ (β = 0.5) measured against **both**:
-- held-out direct edges → recall (current harness), and
-- the precision gold from step 1 → precision on no-direct gap-fills.
-
-A change ships only if it improves the combined objective and keeps the
-`expect`/`dont_expect` probes green.
-
-### 3. Evaluate candidate signals
-Ordered by how directly each attacks the failure mode. Each is A/B-able once
-step 1 exists.
-
-- **Sense-coherent backlink (second-hop validation).** Today `backlink_score`
-  validates hop 1 (source ↔ pivot) but not that the *specific pivot sense*
-  reaching the target is the one that links back to the source. Making it
-  sense-specific is the most direct attack on the åka mechanism, limited only by
-  how fine dbnary's senses are.
-- **Concept agreement (P5137).** Boost inferred pairs whose words share a Wikidata
-  concept, and/or add concept-pivot pairs as a candidate source inside `infer`.
-  It is independent of the dbnary edges and concept-disambiguated, so it attacks
-  the åka mechanism at the source — separating "go-walk" from "go-travel" where
-  string pivots can't — and fills currently-empty pairs (the wikidata.md
-  proposal). This is the strongest principled candidate, but the heaviest to
-  integrate (load Wikidata, join on Q-items).
-- **Pivot fan-out / specificity.** Down-weight a path by how many target words its
-  pivot maps to (prototyped behind `evaluate --experiment`). Targets ambiguity,
-  not count. A faithful test rebuilds `indirect` with the factor.
-- **Round-trip consistency.** Use B→A evidence as a corroboration feature for
-  A→B.
-- **AggByScore gate.** Its rising-threshold diversity gate already excludes åka on
-  current data. Treat it as a first-class lever — characterise and tune it under
-  the objective — rather than only touching the per-path combine.
-
-### 4. Methodology
-For each candidate: implement behind a `scoring.py` constant (default = current
-behaviour), A/B via the harness against the combined objective, and take a
-differential sample (what does it add, what does it drop?). Ship only net-positive
-changes; add the newly labelled cases as regression guards.
-
-## Implemented (this plan, steps 1–4 for the tractable signals)
-- **Precision gold (step 1).** `src/precision_gold.py` mines inferred-only
-  gap-fills from the built `infer.sqlite3`, stratified into hub / near / high to
-  enrich for likely false positives; an independent three-lens LLM judge (neutral
-  / adversarial sense-leak hunter / full-sense-range, majority vote) labels them
-  and the hand-spot-checked result is frozen in
-  `src/tests/data/precision_gold.tsv` (697 rows over all six `evaluate` recall
-  pairs plus the flagship de-en; 633 correct, 62 incorrect, 2 unsure). A `sub`
-  stratum sampled the just-below-threshold [15,20) band to score a *lower* keep
-  threshold (the `--sweep` blind spot); it measured ~92% correct and drove the
-  20 → 15 threshold change (below). Mining is
-  reproducible (`mine-gold`); labels are the persisted artifact, reused by key
-  when the gold grows so only new candidates are re-judged. `confirmed_bad()` is
-  the known-FP list (32 high-confidence).
-- **Combined objective (step 2).** `evaluate` reports held-out recall *and* gold
-  precision and folds them into one F0.5, plus a correct-*retention* term that
-  catches the dropping-good-gap-fills failure. `test_precision_gold.py` covers the
-  metric logic without the big DB.
-- **Signals evaluated (step 3/4).** Measured at a fixed keep threshold, the
-  production model (plain `sum`) beats every variant tried. The **fan-out penalty**
-  lifts gold P to 0.97 but collapses retention to 0.33 and recall to 0.11 →
-  **F0.5 0.39** (vs production **0.438** at thr=20): measured net-negative, does
-  not ship (same lesson as the reverted decay, now quantified on precision). The
-  åka `dont_expect` probe stays green throughout.
-
-  *Threshold lowered 20 → 15 (shipped).* The uniform `sub` sample of the [15,20)
-  band is **~92% correct** (vs hub 0.86 / near 0.93 / high 0.98) — most
-  just-below-threshold gap-fills are real — so `IS_GOOD_THRESHOLD` was lowered to
-  15: held-out recall **0.142 → 0.149** with gold P (~0.91) and the åka probes
-  unchanged, so combined **F0.5 0.438 → 0.450** (`evaluate --sweep`). This is the
-  only no-rebuild scoring win available, and it does *not* touch TEI — tei.py's
-  adaptive cutoff keys off the count of direct edges (score ≥ 100) and
-  `TEI_TARGET_GOOD`, not `IS_GOOD_THRESHOLD`; its single downstream effect is the
-  `is_good` flag in `generic.py`. Caveat: the gold's absolute precision is
-  FP-enriched (hub/near over-sample high-fan-out pivots), so judge a threshold by
-  the admitted band's own precision, not the sweep's headline P; scoring *changes*
-  at a fixed threshold are clean because the enrichment cancels.
-
-  *Concept agreement (P5137) — measured, not yet integrated.* Before paying the
-  external-load + join cost, a no-rebuild probe (`notes/p5137_probe.py`) parsed the
-  Wikidata lexeme dump into a `(lang, lemma) → {Q-item}` map for the five gold
-  languages and cross-tabulated concept agreement against the gold. Two findings
-  decide the case. (i) Where it can speak it is a strong *positive* signal:
-  `P(correct | shares a Q-item) = 0.975` (n=80), and of the 32 confirmed-bad FPs it
-  endorses **zero** — concept agreement never backs a known-false translation (the
-  åka class is absent or non-agreeing, never agreeing). (ii) But it is one-sided and
-  sparse: *disagreement* is not a veto (`P(correct | both present, no shared
-  concept) = 0.819`, since P5137 sense coverage is partial), and both words carry a
-  P5137 sense for only ~26% of correct / ~34% of incorrect gap-fills — the rest are
-  multi-word or long-tail, absent from Wikidata lexemes. So P5137 is worth
-  integrating as a **corroboration boost** (lift the score of inferred pairs that
-  share a concept; never demote on absence), realistically helping the ~27% of
-  single-word-covered gap-fills and the weak/empty pairs — not as a fix for the
-  flagship leak, which it can only withhold from, not veto.
-
-Status of the two principled signals. **Sense-coherent backlink** turned out to be
-*already implemented*: `infer.sql` already joins `backlink.back_sense = t2.sense`,
-so the indirect bonus already requires the back-linking pivot sense to be the one
-reaching the target. It cannot fix `gehen → åka` — dbnary represents English "go"
-(walk / go / travel) as a single coarse sense that translates to gå, gehen *and*
-åka alike, so the back-link sense is byte-identical on the correct and the leaking
-path: a data-granularity ceiling, not a missing signal. **Concept agreement
-(P5137)** is measured (above); the remaining work is the integration itself
-(external lexeme load + a fuzzy lemma/lang join feeding a boost term in
-`infer.sql`), now de-risked by the probe.
-
-## Already in place (do not redo)
-- `src/scoring.py` — centralized constants.
-- `src/evaluate.py` — held-out recall harness plus the fan-out experiment
-  scaffold and differential queries.
-- `AggByScore` diversity gate; the `dont_expect` seed.
-- Plain `sum` combine. The reverted decay is the evidence that corroboration must
-  not be penalised — keep it as a cautionary baseline.
+- **Precision gold** — `src/precision_gold.py` mines inferred-only gap-fills
+  (stratified to enrich for false positives), an independent three-lens LLM judge
+  labels them, frozen in `src/tests/data/precision_gold.tsv` (697 rows; 62 FPs,
+  `confirmed_bad()` = 32 high-confidence). Mining is reproducible; labels are the
+  persisted artifact.
+- **Combined objective** — `evaluate` folds held-out recall + gold precision into
+  one F0.5 plus a correct-*retention* term. `test_precision_gold.py` covers the
+  metric without the big DB.
+- **Threshold 20 → 15 (shipped)** — the uniform sample of the [15,20) band is
+  ~92% correct, so `IS_GOOD_THRESHOLD` dropped to 15: recall 0.142→0.149, F0.5
+  0.438→0.450, probes unchanged. Does not touch TEI (its cutoff keys off
+  `TEI_TARGET_GOOD`, not `IS_GOOD_THRESHOLD`).
+- **Sense-coherent backlink** — turned out *already implemented*: `infer.sql`
+  joins `backlink.back_sense = t2.sense`. Can't fix `gehen → åka` because dbnary
+  models English "go" as one coarse sense — a data-granularity ceiling, not a
+  missing signal.
+- **Wikidata P5137 concept agreement — rejected.** It was considered as both a
+  scoring feature and a precision gold; we are not taking on a Wikidata
+  dependency, so it will not be integrated. (It was also one-sided and sparse:
+  a positive signal where present, but it covers a P5137 sense for only ~26–34%
+  of gap-fills and can never *veto* a leak like åka — so even on the merits it
+  was not a fix for the flagship case.)
 
 ## Risks / open questions
-- An LLM judge errs on low-resource pairs and subtle senses, so the gold needs
-  human spot-checks, and it isn't free to rerun (needs model access).
-- Wikidata P5137 coverage is uneven (strong for major pairs, sparse elsewhere),
-  which limits how much of the long tail concept agreement can score.
-- dbnary sense granularity is coarse ("go" is one sense covering walk and
-  travel), which caps how far sense-coherence reaches without external concepts.
+
+- The LLM judge errs on low-resource pairs and subtle senses → the gold needs
+  human spot-checks and isn't free to rerun (needs model access).
+- dbnary sense granularity is coarse, capping how far sense-coherence reaches
+  without external concepts.
