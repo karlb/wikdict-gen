@@ -1,5 +1,8 @@
 from collections import defaultdict
+from contextlib import closing
 import json
+import sqlite3
+import time
 
 import sqlite_spellfix
 
@@ -293,38 +296,56 @@ def make_search_by_form(conn, lang_pair):
 
 def update_stats(conn, lang_pair):
     from_lang, to_lang = lang_pair.split("-")
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS wikdict.lang_pair (
-            from_lang text,
-            to_lang text,
-            translations int,
-            forms int,
-            score int,
-            PRIMARY KEY (from_lang, to_lang)
-        );
-    """
-    )
-    conn.execute(
-        """
-        DELETE FROM wikdict.lang_pair WHERE from_lang = ? AND to_lang = ?
-    """,
-        [from_lang, to_lang],
-    )
-    conn.execute(
-        """
-        INSERT INTO wikdict.lang_pair(from_lang, to_lang,
-            translations, forms, score)
-        SELECT ?, ?, translations,
-            (SELECT count(*) FROM form), round(score)
-        FROM (
-            SELECT count(*) AS translations,
-                sum(translation_score) AS score
-            FROM main.translation
-        )
-    """,
-        [from_lang, to_lang],
-    )
+    # Compute the per-pair stats from the build connection's own (main) db.
+    translations, score = conn.execute(
+        "SELECT count(*), sum(translation_score) FROM main.translation"
+    ).fetchone()
+    (forms,) = conn.execute("SELECT count(*) FROM form").fetchone()
+    score = round(score) if score is not None else None
+
+    # Write the shared wikdict.sqlite3 on a dedicated, short-lived connection
+    # rather than through an ATTACH on the build connection. Writing it via the
+    # attached schema is an in-transaction lock *upgrade* on an attached db,
+    # which SQLite refuses to wait on (it returns SQLITE_BUSY immediately,
+    # ignoring busy_timeout, to avoid deadlock) -- so under `make -j` the
+    # pair-builds collided with "database is locked". A standalone single-db
+    # write holds no other locks, so the busy handler is honored (timeout below)
+    # and concurrent writers serialize cleanly instead of erroring.
+    wikdict_path = "%s/wdweb/wikdict.sqlite3" % dict_dir()
+    for attempt in range(5):
+        try:
+            with closing(sqlite3.connect(wikdict_path, timeout=60)) as w:
+                w.execute("PRAGMA journal_mode=WAL")
+                w.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS lang_pair (
+                        from_lang text,
+                        to_lang text,
+                        translations int,
+                        forms int,
+                        score int,
+                        PRIMARY KEY (from_lang, to_lang)
+                    )
+                    """
+                )
+                w.execute(
+                    "DELETE FROM lang_pair WHERE from_lang = ? AND to_lang = ?",
+                    [from_lang, to_lang],
+                )
+                w.execute(
+                    """
+                    INSERT INTO lang_pair(from_lang, to_lang, translations, forms, score)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    [from_lang, to_lang, translations, forms, score],
+                )
+                w.commit()
+            return
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e) and attempt < 4:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise
 
 
 def do(lang, only, sql, **kwargs):
@@ -343,7 +364,6 @@ def do(lang, only, sql, **kwargs):
             % (dict_dir(), to_lang, from_lang),
             "'%s/processed/%s.sqlite3' AS lang" % (dict_dir(), from_lang),
             "'%s/processed/%s.sqlite3' AS other" % (dict_dir(), to_lang),
-            "'%s/wdweb/wikdict.sqlite3' AS wikdict" % dict_dir(),
         ]
         targets = [
             ("translation", make_translation),
