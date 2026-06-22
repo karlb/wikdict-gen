@@ -9,6 +9,7 @@ concurrently.
 
 import bz2
 import os
+import resource
 import shutil
 import time
 from glob import glob
@@ -73,6 +74,25 @@ def ttl_files(ttl_dir=TTL_DIR):
     return files
 
 
+# RocksDB's bulk load keeps every SST file of the store open at once (~1670 for the
+# full store today), so the common systemd default soft limit of 1024 aborts the
+# load with "Too many open files". 65536 leaves ~40x headroom. We deliberately do not
+# raise it to the hard maximum: the soft limit stays low by design so code using
+# select()/FD_SETSIZE keeps working, so we lift it only to what the load needs.
+_FD_TARGET = 65536
+
+
+def _raise_fd_limit():
+    """Lift the open-file soft limit to ``_FD_TARGET`` if it is lower (capped at hard).
+
+    Inherited soft limits vary by launching shell, so we fix it here rather than
+    relying on the caller's ``ulimit``.
+    """
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if soft < _FD_TARGET:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (min(_FD_TARGET, hard), hard))
+
+
 def build_store(ttl_dir=TTL_DIR, store_path=None):
     """(Re)build the on-disk store, each edition's dumps in its own named graph."""
     store_path = store_path or _store_path()
@@ -80,6 +100,7 @@ def build_store(ttl_dir=TTL_DIR, store_path=None):
     if not files:
         raise SystemExit(f"No TTL dumps found in {ttl_dir!r}")
 
+    _raise_fd_limit()
     shutil.rmtree(store_path, ignore_errors=True)  # never query a stale/partial store
     parent = os.path.dirname(store_path)
     if parent:
