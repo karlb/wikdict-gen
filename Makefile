@@ -2,7 +2,7 @@ MAKEFLAGS += --no-builtin-rules
 # Update with `uv run src/helper.py makefile > generated.mk`
 include generated.mk
 
-.PHONY: test extensions download update
+.PHONY: test extensions download update tei tei-noinfl converted kobo stardict
 .SECONDARY:  # keep intermediate files
 .DELETE_ON_ERROR:
 
@@ -121,7 +121,7 @@ release-download:
 release-tei:
 	rsync $(RSYNC_FLAGS) dictionaries/tei/* $(WEB_HOST):hosts/download/dictionaries/tei/recommended
 release-tei-noinfl:
-	rsync $(RSYNC_FLAGS) dictionaries/tei/* $(WEB_HOST):hosts/download/dictionaries/tei/no-infl
+	rsync $(RSYNC_FLAGS) dictionaries/tei-noinfl/* $(WEB_HOST):hosts/download/dictionaries/tei/no-infl
 
 dictionaries/kobo/dicthtml-%.zip:
 	pyglossary $< $@ --write-format Kobo
@@ -132,9 +132,41 @@ dictionaries/stardict/%:
 	mkdir -p $@
 	pyglossary $< $@/stardict --write-format Stardict
 
-# These will be missing prerequisites in some cases (small dicts), just use `make --keep-going`.
-kobo: $(shell grep kobo/dicthtml generated.mk | cut -d: -f1)
-stardict: $(shell grep stardict generated.mk | awk -F ':' '{print $$1 ".zip"}')
+# TEI generation reads the already-built wdweb databases (build them first with
+# `make` / `make wdweb`). It is deliberately NOT wired to the wdweb files as
+# prerequisites: depending on all 650+ wdweb DBs would make `make converted`
+# re-validate the whole upstream pipeline and rebuild it whenever an input merely
+# looks stale -- and tei.py itself bumps the processed DBs' mtimes while building
+# a scratch index, which would trigger exactly that. A render+convert step should
+# consume wdweb, not rebuild it. The default variant includes inflected forms and
+# is what kobo/stardict consume; tei-noinfl writes an inflection-free variant to
+# dictionaries/tei-noinfl (see release-tei-noinfl).
+tei:
+	uv run src/tei.py all
+tei-noinfl:
+	uv run src/tei.py all --no-inflections
+
+# One-call build: generate the (with-inflections) TEI first, then convert it to
+# kobo + stardict. The two phases are separate sub-makes so the kobo/stardict
+# prerequisite lists below -- which $(shell)-inspect the filesystem for the .tei
+# files that exist -- are expanded only after TEI generation finishes ($(shell)
+# in a prerequisite is evaluated when that make parses the rule, and the second
+# sub-make re-parses after the first returns). No race under -j; the jobserver is
+# inherited so the pyglossary conversions still run in parallel. Same pattern as
+# the `update` target above.
+converted:
+	$(MAKE) tei
+	$(MAKE) kobo stardict
+
+# Build kobo/stardict only for pairs whose with-inflections .tei exists at the top
+# level of dictionaries/tei. Too-small pairs (< 5000 headwords) are written to
+# dictionaries/tei/small/ and 0-headword pairs aren't written at all, so
+# dictionaries/tei/<codes>.tei is absent for them and they are skipped here -- no
+# missing-prerequisite failure, no `make --keep-going` needed.
+# NOTE: relies on tei.py's "< 5000 -> small/" split while generated.mk points at
+# dictionaries/tei/<codes>.tei; keep the two in sync.
+kobo: $(shell awk -F': ' '/kobo\/dicthtml/{print $$1" "$$2}' generated.mk | while read tgt tei; do [ -f "$$tei" ] && echo "$$tgt"; done)
+stardict: $(shell awk -F': ' '/stardict/{print $$1" "$$2}' generated.mk | while read tgt tei; do [ -f "$$tei" ] && echo "$$tgt.zip"; done)
 
 release-converted:
 	rsync $(RSYNC_FLAGS) dictionaries/kobo/*.zip $(WEB_HOST):hosts/download/dictionaries/kobo

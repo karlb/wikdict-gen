@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-import sys
+import argparse
 import sqlite3
 import datetime
 import time
@@ -18,9 +18,6 @@ from collections import OrderedDict
 from languages import language_names, language_codes3
 from helper import supported_langs
 import scoring
-
-
-INCLUDE_INFLECTED = True
 
 
 def indent(elem, level=0):
@@ -201,11 +198,17 @@ def get_translations(from_lang, to_lang):
     with closing(conn):
         conn.row_factory = sqlite3.Row
 
+        # Attach the source DBs read-only so TEI generation never writes to (and
+        # bumps the mtime of) the processed/wdweb databases the rest of the build
+        # depends on -- a stray mtime change would make later `make` runs rebuild
+        # the upstream pipeline.
         conn.execute(
-            "ATTACH DATABASE 'dictionaries/wdweb/%s.sqlite3' AS prod_lang" % from_lang
+            "ATTACH DATABASE 'file:dictionaries/wdweb/%s.sqlite3?mode=ro' AS prod_lang"
+            % from_lang
         )
         conn.execute(
-            "ATTACH DATABASE 'dictionaries/processed/%s.sqlite3' AS from_lang" % from_lang
+            "ATTACH DATABASE 'file:dictionaries/processed/%s.sqlite3?mode=ro' AS from_lang"
+            % from_lang
         )
         good_translations = next(
             conn.execute(
@@ -215,8 +218,15 @@ def get_translations(from_lang, to_lang):
             )
         )[0]
         measured_exec = lambda *args, **kwargs: measured_execute(conn, *args, **kwargs)
-        conn.execute("BEGIN")
-        measured_exec("CREATE INDEX from_lang.from_lexentry_idx ON form(lexentry)")
+        # Copy the columns we need from the (read-only) processed form table into a
+        # temp table and index that, so the inflected-forms lookups below stay fast
+        # without mutating the source DB. The temp table is dropped when the
+        # connection closes.
+        measured_exec(
+            "CREATE TEMP TABLE from_form AS "
+            "SELECT lexentry, other_written, rank FROM from_lang.form"
+        )
+        measured_exec("CREATE INDEX from_form_lexentry_idx ON from_form(lexentry)")
 
         expected_good_translations = scoring.TEI_TARGET_GOOD
         min_translation_score = round(
@@ -280,7 +290,7 @@ def get_translations(from_lang, to_lang):
                 measured_exec(
                     """
                 SELECT other_written, min(rank) AS rank
-                FROM form f
+                FROM from_form f
                 WHERE lexentry IN (%s)
                 GROUP BY other_written
                 ORDER BY rank;
@@ -291,9 +301,6 @@ def get_translations(from_lang, to_lang):
             )
 
             yield entry
-
-        # We create an index and don't want to keep it in the db.
-        conn.rollback()
 
         if SHOW_TIMINGS:
             for query, timing in query_timings.items():
@@ -322,7 +329,7 @@ def add_senses(entry, x, to_lang, is_suffix):
                 sense_def.text = s["gloss"]
 
 
-def single_tei_entry(x, to_lang):
+def single_tei_entry(x, to_lang, include_inflected):
     # entry
     entry = Element("entry")
     form = SubElement(entry, "form")
@@ -343,7 +350,7 @@ def single_tei_entry(x, to_lang):
         pos_text = pos_mapping.get(x["part_of_speech"], (x["part_of_speech"], None))[0]
 
     # inflected forms
-    if x["inflected_forms"] and INCLUDE_INFLECTED:
+    if x["inflected_forms"] and include_inflected:
         infl_form = SubElement(form, "form", {"type": "infl"})
         for infl_form_row in x["inflected_forms"]:
             attrs = {"wikdict:show": "true"} if infl_form_row["rank"] else {}
@@ -365,7 +372,7 @@ def single_tei_entry(x, to_lang):
     return entry
 
 
-def get_tei_entries_as_xml(from_lang, to_lang):
+def get_tei_entries_as_xml(from_lang, to_lang, include_inflected):
     """Get all entries as xml string
 
     Keeping them as XML objects would use much more memory
@@ -373,7 +380,7 @@ def get_tei_entries_as_xml(from_lang, to_lang):
     entries_xml_text_list = []
     headwords = 0
     for x in get_translations(from_lang, to_lang):
-        entry = single_tei_entry(x, to_lang)
+        entry = single_tei_entry(x, to_lang, include_inflected)
 
         indent(entry, level=2)
         entries_xml_text_list.append(tostring(entry, "unicode"))
@@ -386,14 +393,14 @@ def get_tei_entries_as_xml(from_lang, to_lang):
     return entries_xml_text, headwords
 
 
-def write_tei_dict(from_lang, to_lang):
+def write_tei_dict(from_lang, to_lang, include_inflected, out_base):
     print(from_lang, to_lang)
     pos_usage = "".join(
         '<item ana="{1}">{0}</item>'.format(*pos) for pos in list(pos_mapping.values())
     )
 
     # get entries, this is where most work is done
-    entries, headwords = get_tei_entries_as_xml(from_lang, to_lang)
+    entries, headwords = get_tei_entries_as_xml(from_lang, to_lang, include_inflected)
     if headwords == 0:
         return
 
@@ -432,7 +439,7 @@ def write_tei_dict(from_lang, to_lang):
     )
 
     # write to file and add declarations
-    out_dir = "dictionaries/tei" + ("/small" if headwords < 5000 else "")
+    out_dir = out_base + ("/small" if headwords < 5000 else "")
     os.makedirs(out_dir, exist_ok=True)
     out_filename = "{}/{}-{}.tei".format(
         out_dir, language_codes3[from_lang], language_codes3[to_lang]
@@ -450,24 +457,39 @@ def write_tei_dict(from_lang, to_lang):
         out_file.write(complete_tei)
 
 
-def write_dict_pair(from_lang, to_lang):
-    write_tei_dict(from_lang, to_lang)
-    write_tei_dict(to_lang, from_lang)
+def write_dict_pair(from_lang, to_lang, include_inflected, out_base):
+    write_tei_dict(from_lang, to_lang, include_inflected, out_base)
+    write_tei_dict(to_lang, from_lang, include_inflected, out_base)
 
 
 def main():
-    if len(sys.argv) == 2 and sys.argv[1] == "all":
+    parser = argparse.ArgumentParser(
+        description="Generate TEI dictionaries from the wdweb databases."
+    )
+    parser.add_argument(
+        "langs",
+        nargs="+",
+        metavar="LANG",
+        help="either 'all' or a FROM_LANG TO_LANG pair (e.g. de en)",
+    )
+    parser.add_argument(
+        "--no-inflections",
+        action="store_true",
+        help="omit inflected forms and write to dictionaries/tei-noinfl",
+    )
+    args = parser.parse_args()
+
+    include_inflected = not args.no_inflections
+    out_base = "dictionaries/tei" if include_inflected else "dictionaries/tei-noinfl"
+
+    if args.langs == ["all"]:
         for from_lang, to_lang in permutations(supported_langs, 2):
-            write_dict_pair(from_lang, to_lang)
-    elif len(sys.argv) == 3:
-        from_lang, to_lang = sys.argv[1:]
-        # import cProfile
-        # cProfile.run('write_dict_pair(from_lang, to_lang)', sort='cumtime')
-        # cProfile.run('get_tei_entries_as_xml("de", "fr")', sort='tottime')
-        write_dict_pair(from_lang, to_lang)
+            write_dict_pair(from_lang, to_lang, include_inflected, out_base)
+    elif len(args.langs) == 2:
+        from_lang, to_lang = args.langs
+        write_dict_pair(from_lang, to_lang, include_inflected, out_base)
     else:
-        print("Usage: %s [FROM_LANG] [TO_LANG]" % sys.argv[0])
-        print("    or %s all" % sys.argv[0])
+        parser.error("expected 'all' or a FROM_LANG TO_LANG pair")
 
 
 if __name__ == "__main__":
