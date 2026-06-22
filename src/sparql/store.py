@@ -7,7 +7,7 @@ opens the store read-only, which takes no lock, so ``make -j`` can run many read
 concurrently.
 """
 
-import gzip
+import bz2
 import os
 import shutil
 import time
@@ -67,7 +67,7 @@ def ttl_files(ttl_dir=TTL_DIR):
     """
     files = []
     for dump_type in LOADED_DUMP_TYPES:
-        for path in sorted(glob(os.path.join(ttl_dir, f"*_dbnary_{dump_type}.ttl.gz"))):
+        for path in sorted(glob(os.path.join(ttl_dir, f"*_dbnary_{dump_type}.ttl.bz2"))):
             edition = os.path.basename(path).split("_", 1)[0]
             files.append((edition, path))
     return files
@@ -89,7 +89,7 @@ def build_store(ttl_dir=TTL_DIR, store_path=None):
     start = time.time()
     for edition, path in files:
         t0 = time.time()
-        with gzip.open(path, "rb") as fh:
+        with bz2.open(path, "rb") as fh:
             # lenient=True skips IRI/lexical validation so a single malformed IRI in a
             # dump (e.g. a stray variation selector) doesn't abort the whole load, as
             # Virtuoso tolerated.

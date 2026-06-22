@@ -8,7 +8,7 @@ Everything is built into a temp dir via WIKDICT_DICT_DIR, so the real
 seconds with no pre-built database, so it works on a fresh checkout / in CI.
 """
 
-import gzip
+import bz2
 import os
 import shutil
 import sqlite3
@@ -64,8 +64,8 @@ class TestEndToEnd(unittest.TestCase):
         os.makedirs(ttl_dir)
         for name in os.listdir(FIXTURES):
             if name.endswith(".ttl"):
-                with open(os.path.join(FIXTURES, name), "rb") as src, gzip.open(
-                    os.path.join(ttl_dir, name + ".gz"), "wb"
+                with open(os.path.join(FIXTURES, name), "rb") as src, bz2.open(
+                    os.path.join(ttl_dir, name + ".bz2"), "wb"
                 ) as dst:
                     shutil.copyfileobj(src, dst)
 

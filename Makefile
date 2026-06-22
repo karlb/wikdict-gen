@@ -2,7 +2,7 @@ MAKEFLAGS += --no-builtin-rules
 # Update with `uv run src/helper.py makefile > generated.mk`
 include generated.mk
 
-.PHONY: test extensions download gzip
+.PHONY: test extensions download
 .SECONDARY:  # keep intermediate files
 .DELETE_ON_ERROR:
 
@@ -44,20 +44,16 @@ dictionaries/infer.sqlite3: ${ALL_PROCESSED}
 # Bulk-load all dbnary dumps into one pyoxigraph store (the union of all editions).
 # Rebuilt when any loaded dump changes. Readers (raw extraction) open it read-only,
 # so `make -j raw` runs many readers against this one store.
-dictionaries/store/.loaded: $(wildcard virtuoso/ttl/*_dbnary_ontolex.ttl.gz) \
-                            $(wildcard virtuoso/ttl/*_dbnary_exolex_ontolex.ttl.gz) \
-                            $(wildcard virtuoso/ttl/*_dbnary_morphology.ttl.gz)
+dictionaries/store/.loaded: $(wildcard virtuoso/ttl/*_dbnary_ontolex.ttl.bz2) \
+                            $(wildcard virtuoso/ttl/*_dbnary_exolex_ontolex.ttl.bz2) \
+                            $(wildcard virtuoso/ttl/*_dbnary_morphology.ttl.bz2)
 	uv run src/run.py load-store
 	touch $@
 
-# Download the dbnary dumps and decompress to the .gz the loader reads.
+# Download the dbnary dumps; the loader reads the .ttl.bz2 directly.
 download:
 	wget -r -nd --timestamping --no-parent --accept '*.ttl.bz2' \
 		--directory-prefix=virtuoso/ttl http://kaiko.getalp.org/static/ontolex/latest/
-
-gzip: $(patsubst %.bz2,%.gz,$(wildcard virtuoso/ttl/*.bz2))
-virtuoso/ttl/%.gz: virtuoso/ttl/%.bz2
-	bzcat $< | gzip > $@
 
 ${ALL_RAW}: dictionaries/raw/%.sqlite3: dictionaries/store/.loaded
 	uv run src/run.py raw $*
