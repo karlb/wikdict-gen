@@ -87,7 +87,9 @@ ${ALL_PROCESSED_PAIRS}: dictionaries/processed/%.sqlite3: dictionaries/raw/%.sql
     dictionaries/processed/$$(word 2,$$(subst -, ,%)).sqlite3
 	uv run src/run.py process $*
 
-${ALL_GENERIC}: dictionaries/generic/%.sqlite3: dictionaries/processed/%.sqlite3 dictionaries/infer.sqlite3
+${ALL_GENERIC}: dictionaries/generic/%.sqlite3: dictionaries/processed/%.sqlite3 \
+    dictionaries/processed/$$(firstword $$(subst -, ,%)).sqlite3 \
+    dictionaries/infer.sqlite3
 	uv run src/run.py generic $*
 
 .SECONDEXPANSION:
