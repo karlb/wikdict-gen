@@ -155,15 +155,19 @@ def koreader_dict_list():
 BASELINE_PATH = "src/tests/translation_baseline.tsv"
 
 
-def translation_ratios():
-    """Per source edition, the fraction of translations that carry a sense
-    definition (the high-quality path) rather than only a gloss hint.
+def translation_stats():
+    """Per source edition: ``(definition_ratio, total_translations)``, summed
+    across all of the edition's raw pairs.
 
-    Aggregated across all of an edition's pairs: the sense<->translation linkage
-    drifts per source edition in dbnary, so a per-edition ratio is the signal that
-    catches a collapse (e.g. a query that silently stops matching). Reads the raw
-    dbs, where ``translation_sense`` holds the definition-bearing rows and
-    ``translation`` holds all of them.
+    The *ratio* is the fraction of translations carrying a sense definition (the
+    high-quality path, ``translation_sense``) rather than only a gloss hint; the
+    sense<->translation linkage drifts per edition in dbnary, so a per-edition
+    ratio catches a linkage collapse (e.g. a query that silently stops matching).
+    The *count* catches the orthogonal failure the ratio is blind to: an edition
+    (or the upstream dump) shedding most of its translations while the ratio holds
+    steady -- e.g. the 2026-06 Malagasy edition lost ~80% of its translations
+    (mg-en 1917 -> 358) yet its already-~0 ratio never moved, silently pushing
+    en-mg below the publish thresholds.
     """
     linked = {}
     total = {}
@@ -179,19 +183,27 @@ def translation_ratios():
                 continue  # pair not built yet / tables missing
         linked[src] = linked.get(src, 0) + n_sense
         total[src] = total.get(src, 0) + n_total
-    return {src: linked[src] / total[src] for src in total if total[src]}
+    return {
+        src: (linked[src] / total[src], total[src]) for src in total if total[src]
+    }
 
 
-def check_translations(rel_drop=0.5, floor=0.01):
-    """Flag source editions whose definition ratio collapsed vs the baseline.
+def check_translations(rel_drop=0.5, ratio_floor=0.01, count_floor=200):
+    """Flag source editions whose definition ratio *or* translation count
+    collapsed vs the baseline.
 
-    Empty-db checks miss this: when an edition loses its sense<->translation
-    linkage, the gloss path keeps ``translation`` non-empty, so only the *ratio*
-    of definition-bearing rows drops. Editions that are legitimately near zero
-    (no sense linkage in the dump at all) are excluded by ``floor`` so they can't
-    false-positive; a real regression trips the ``rel_drop`` threshold.
+    Two regressions hide from the empty-db check, both caught here:
+    1. The edition loses its sense<->translation linkage -- the gloss path keeps
+       ``translation`` non-empty, so only the *ratio* of definition-bearing rows
+       drops.
+    2. The edition (or upstream dump) sheds most of its translations -- the
+       *count* drops while the ratio is unchanged. This is the 2026-06 Malagasy
+       collapse (every mg-* pair ~-80%) that pushed en-mg out of the downloads
+       and the web picker with no error anywhere.
 
-    Regenerate the baseline after an intentional change with::
+    Editions legitimately near zero are excluded by the floors so they can't
+    false-positive; a real regression trips ``rel_drop``. Regenerate the baseline
+    after an intentional change with::
 
         uv run src/helper.py translation-baseline > src/tests/translation_baseline.tsv
     """
@@ -201,19 +213,25 @@ def check_translations(rel_drop=0.5, floor=0.01):
             f"(create it with `uv run src/helper.py translation-baseline > {BASELINE_PATH}`)"
         )
         return
+    baseline = {}
     with open(BASELINE_PATH) as f:
-        baseline = {ed: float(r) for ed, r in (ln.split() for ln in f if ln.strip())}
-    current = translation_ratios()
-    bad = [
-        (ed, base, current.get(ed, 0.0))
-        for ed, base in baseline.items()
-        if base >= floor and current.get(ed, 0.0) < base * rel_drop
-    ]
-    for ed, base, cur in bad:
-        print(f"REGRESSION: {ed} definition-ratio {base:.1%} -> {cur:.1%}")
+        for line in f:
+            if line.strip():
+                ed, ratio, count = line.split()
+                baseline[ed] = (float(ratio), int(count))
+    current = translation_stats()
+    bad = []
+    for ed, (base_ratio, base_count) in baseline.items():
+        cur_ratio, cur_count = current.get(ed, (0.0, 0))
+        if base_ratio >= ratio_floor and cur_ratio < base_ratio * rel_drop:
+            bad.append(f"{ed} definition-ratio {base_ratio:.1%} -> {cur_ratio:.1%}")
+        if base_count >= count_floor and cur_count < base_count * rel_drop:
+            bad.append(f"{ed} translation-count {base_count} -> {cur_count}")
+    for msg in bad:
+        print(f"REGRESSION: {msg}")
     if bad:
         sys.exit(1)
-    print("Definition ratios ok")
+    print("Definition ratios and translation counts ok")
 
 
 if __name__ == "__main__":
@@ -229,8 +247,8 @@ if __name__ == "__main__":
     elif sys.argv[1] == "koreader":
         koreader_dict_list()
     elif sys.argv[1] == "translation-baseline":
-        for ed, ratio in sorted(translation_ratios().items()):
-            print(f"{ed}\t{ratio:.4f}")
+        for ed, (ratio, count) in sorted(translation_stats().items()):
+            print(f"{ed}\t{ratio:.4f}\t{count}")
     elif sys.argv[1] == "check-translations":
         check_translations()
     elif sys.argv[1] == "makefile":
